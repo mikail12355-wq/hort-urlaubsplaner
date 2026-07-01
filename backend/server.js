@@ -8,7 +8,13 @@ const PORT = process.env.PORT || 3001;
 
 const allowedOrigins = process.env.ALLOWED_ORIGIN
   ? process.env.ALLOWED_ORIGIN.split(',').map((o) => o.trim())
-  : ['http://localhost:5173', 'http://localhost:4173', 'http://localhost:4174'];
+  : [
+      'http://localhost:5173',
+      'http://localhost:4173',
+      'https://mikail12355-wq.github.io',
+      'https://paul-schneider-hort.de',
+      'https://www.paul-schneider-hort.de',
+    ];
 
 app.use(
   cors({
