@@ -1,0 +1,157 @@
+import { useState, useEffect } from 'react';
+import { api } from '../api';
+
+export default function VacationModal({ modal, onClose, onSave, onDelete }) {
+  const isEdit = modal.mode === 'edit';
+  const [form, setForm] = useState({
+    start_date: isEdit ? modal.vacation.start_date : (modal.date ?? ''),
+    end_date: isEdit ? modal.vacation.end_date : (modal.date ?? ''),
+    note: isEdit ? (modal.vacation.note ?? '') : '',
+  });
+  const [error, setError] = useState('');
+  const [loading, setLoading] = useState(false);
+  const [confirmDelete, setConfirmDelete] = useState(false);
+
+  useEffect(() => {
+    const handleKey = (e) => { if (e.key === 'Escape') onClose(); };
+    window.addEventListener('keydown', handleKey);
+    return () => window.removeEventListener('keydown', handleKey);
+  }, [onClose]);
+
+  const set = (key) => (e) => setForm((f) => ({ ...f, [key]: e.target.value }));
+
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    setError('');
+    if (form.start_date > form.end_date) {
+      return setError('Startdatum muss vor dem Enddatum liegen.');
+    }
+    setLoading(true);
+    try {
+      if (isEdit) {
+        await api.updateVacation(modal.vacation.id, form);
+      } else {
+        await api.addVacation(form);
+      }
+      onSave();
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleDelete = async () => {
+    if (!confirmDelete) return setConfirmDelete(true);
+    setLoading(true);
+    try {
+      await api.deleteVacation(modal.vacation.id);
+      onDelete();
+    } catch (err) {
+      setError(err.message);
+      setLoading(false);
+    }
+  };
+
+  return (
+    <div
+      className="fixed inset-0 bg-black/40 backdrop-blur-sm flex items-end sm:items-center justify-center z-50 p-0 sm:p-4"
+      onClick={onClose}
+    >
+      <div
+        className="bg-white w-full sm:max-w-md rounded-t-2xl sm:rounded-2xl shadow-xl"
+        onClick={(e) => e.stopPropagation()}
+      >
+        <div className="p-6">
+          <div className="flex items-center justify-between mb-5">
+            <h3 className="text-lg font-semibold text-gray-800">
+              {isEdit ? '✏️ Urlaub bearbeiten' : '+ Urlaub eintragen'}
+            </h3>
+            <button
+              onClick={onClose}
+              className="w-8 h-8 flex items-center justify-center rounded-full text-gray-400 hover:bg-gray-100 hover:text-gray-600 transition-colors text-lg"
+            >
+              ×
+            </button>
+          </div>
+
+          <form onSubmit={handleSubmit} className="space-y-4">
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <label className="block text-xs font-medium text-gray-500 mb-1.5 uppercase tracking-wide">Von</label>
+                <input
+                  type="date"
+                  value={form.start_date}
+                  onChange={set('start_date')}
+                  className="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-300 focus:border-transparent"
+                  required
+                />
+              </div>
+              <div>
+                <label className="block text-xs font-medium text-gray-500 mb-1.5 uppercase tracking-wide">Bis</label>
+                <input
+                  type="date"
+                  value={form.end_date}
+                  min={form.start_date}
+                  onChange={set('end_date')}
+                  className="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-300 focus:border-transparent"
+                  required
+                />
+              </div>
+            </div>
+            <div>
+              <label className="block text-xs font-medium text-gray-500 mb-1.5 uppercase tracking-wide">
+                Notiz <span className="normal-case font-normal">(optional)</span>
+              </label>
+              <input
+                type="text"
+                value={form.note}
+                onChange={set('note')}
+                className="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-300 focus:border-transparent"
+                placeholder="z.B. Familienurlaub"
+                maxLength={100}
+              />
+            </div>
+
+            {error && (
+              <div className="bg-red-50 border border-red-100 text-red-600 text-sm rounded-xl px-4 py-3">
+                {error}
+              </div>
+            )}
+
+            <div className="flex gap-2 pt-1">
+              {isEdit && (
+                <button
+                  type="button"
+                  onClick={handleDelete}
+                  disabled={loading}
+                  className={`text-sm px-4 py-2.5 rounded-xl font-medium transition-colors ${
+                    confirmDelete
+                      ? 'bg-red-500 text-white hover:bg-red-600'
+                      : 'text-red-500 border border-red-200 hover:bg-red-50'
+                  }`}
+                >
+                  {confirmDelete ? 'Wirklich?' : 'Löschen'}
+                </button>
+              )}
+              <button
+                type="button"
+                onClick={onClose}
+                className="flex-1 text-sm py-2.5 rounded-xl border border-gray-200 text-gray-600 hover:bg-gray-50 transition-colors"
+              >
+                Abbrechen
+              </button>
+              <button
+                type="submit"
+                disabled={loading}
+                className="flex-1 bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-medium py-2.5 rounded-xl transition-colors disabled:opacity-60"
+              >
+                {loading ? '...' : isEdit ? 'Speichern' : 'Eintragen'}
+              </button>
+            </div>
+          </form>
+        </div>
+      </div>
+    </div>
+  );
+}
