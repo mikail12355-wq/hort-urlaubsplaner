@@ -68,6 +68,20 @@ router.put('/allowance', authenticate, (req, res) => {
   res.json({ message: 'Urlaubstage aktualisiert.', allowance });
 });
 
+router.put('/carryover', authenticate, (req, res) => {
+  const carryover = parseInt(req.body.carryover);
+  const year = parseInt(req.body.year) || new Date().getFullYear();
+  if (isNaN(carryover) || carryover < 0 || carryover > 365) {
+    return res.status(400).json({ error: 'Ungültige Anzahl (0–365).' });
+  }
+  db.prepare(`
+    INSERT INTO vacation_year_data (user_id, year, carryover)
+    VALUES (?, ?, ?)
+    ON CONFLICT(user_id, year) DO UPDATE SET carryover = excluded.carryover
+  `).run(req.user.id, year, carryover);
+  res.json({ message: 'Resturlaub aktualisiert.', year, carryover });
+});
+
 router.put('/:id', authenticate, (req, res) => {
   const { start_date, end_date, note } = req.body;
   const vacation = db.prepare('SELECT * FROM vacations WHERE id = ?').get(req.params.id);

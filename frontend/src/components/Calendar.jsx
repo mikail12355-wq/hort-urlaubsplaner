@@ -29,28 +29,44 @@ function colorFor(userId) {
   return USER_COLORS[userId % USER_COLORS.length];
 }
 
-function StatsCard({ stats, year, onYearChange, onAllowanceChange }) {
+function InlineNumberEditor({ value: initial, onSave, children }) {
   const [editing, setEditing] = useState(false);
-  const [value, setValue] = useState(stats.allowance);
+  const [value, setValue] = useState(initial);
   const [saving, setSaving] = useState(false);
   const inputRef = useRef(null);
 
-  useEffect(() => { setValue(stats.allowance); }, [stats.allowance]);
+  useEffect(() => { setValue(initial); }, [initial]);
   useEffect(() => { if (editing) inputRef.current?.select(); }, [editing]);
 
   const save = async () => {
-    if (value === stats.allowance) return setEditing(false);
+    if (value === initial) return setEditing(false);
     setSaving(true);
-    try {
-      await api.updateAllowance(value);
-      setEditing(false);
-      onAllowanceChange();
-    } catch (e) {
-      alert(e.message);
-    } finally {
-      setSaving(false);
-    }
+    try { await onSave(value); setEditing(false); }
+    catch (e) { alert(e.message); }
+    finally { setSaving(false); }
   };
+
+  if (!editing) return (
+    <button onClick={() => setEditing(true)}
+      className="font-bold text-sm underline decoration-dotted hover:opacity-70 transition-opacity"
+      title="Klicken zum Anpassen">
+      {children ?? `${initial} Tage`}
+    </button>
+  );
+
+  return (
+    <div className="flex items-center justify-center gap-1">
+      <input ref={inputRef} type="number" value={value} min={0} max={365}
+        onChange={(e) => setValue(Number(e.target.value))}
+        onKeyDown={(e) => { if (e.key === 'Enter') save(); if (e.key === 'Escape') setEditing(false); }}
+        className="w-12 border border-indigo-300 rounded-lg px-1 py-0.5 text-sm text-center focus:outline-none focus:ring-1 focus:ring-indigo-300" />
+      <button onClick={save} disabled={saving} className="text-indigo-600 font-bold text-sm">✓</button>
+      <button onClick={() => setEditing(false)} className="text-gray-400 text-sm">✕</button>
+    </div>
+  );
+}
+
+function StatsCard({ stats, year, onYearChange, onAllowanceChange }) {
 
   const total = stats.total_allowance ?? stats.allowance;
   const pct = total > 0 ? Math.min(100, (stats.used_days / total) * 100) : 0;
@@ -85,28 +101,23 @@ function StatsCard({ stats, year, onYearChange, onAllowanceChange }) {
       <div className="grid grid-cols-3 gap-2 text-center text-xs">
         <div className="bg-gray-50 rounded-xl p-2">
           <div className="text-gray-400 mb-0.5">Standard / Jahr</div>
-          <div className="flex items-center justify-center gap-1">
-            {editing ? (
-              <>
-                <input ref={inputRef} type="number" value={value} min={0} max={365}
-                  onChange={(e) => setValue(Number(e.target.value))}
-                  onKeyDown={(e) => { if (e.key === 'Enter') save(); if (e.key === 'Escape') setEditing(false); }}
-                  className="w-12 border border-indigo-300 rounded-lg px-1 py-0.5 text-sm text-center focus:outline-none focus:ring-1 focus:ring-indigo-300" />
-                <button onClick={save} disabled={saving} className="text-indigo-600 font-bold">✓</button>
-                <button onClick={() => setEditing(false)} className="text-gray-400">✕</button>
-              </>
-            ) : (
-              <button onClick={() => setEditing(true)}
-                className="font-bold text-gray-800 text-sm underline decoration-dotted hover:text-indigo-600"
-                title="Einmalig festlegen – gilt für alle Jahre">
-                {stats.allowance} Tage
-              </button>
-            )}
+          <div className="text-gray-800">
+            <InlineNumberEditor
+              value={stats.allowance}
+              onSave={async (v) => { await api.updateAllowance(v); onAllowanceChange(); }}
+            />
           </div>
         </div>
         <div className="bg-emerald-50 rounded-xl p-2">
           <div className="text-emerald-600 mb-0.5">Übertrag {year - 1}</div>
-          <div className="font-bold text-emerald-700 text-sm">+{stats.carryover ?? 0} Tage</div>
+          <div className="text-emerald-700">
+            <InlineNumberEditor
+              value={stats.carryover ?? 0}
+              onSave={async (v) => { await api.updateCarryover(v, year); onAllowanceChange(); }}
+            >
+              +{stats.carryover ?? 0} Tage
+            </InlineNumberEditor>
+          </div>
         </div>
         <div className="bg-indigo-50 rounded-xl p-2">
           <div className="text-indigo-500 mb-0.5">Genutzt {year}</div>

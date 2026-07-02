@@ -21,6 +21,7 @@ export const api = {
   getVacations: (year, month) => req(`/vacations/month/${year}/${month}`),
   getStats: (year) => req(`/vacations/stats/${year}`),
   updateAllowance: (allowance) => req('/vacations/allowance', { method: 'PUT', body: JSON.stringify({ allowance }) }),
+  updateCarryover: (carryover, year) => req('/vacations/carryover', { method: 'PUT', body: JSON.stringify({ carryover, year }) }),
   addVacation: (body) => req('/vacations', { method: 'POST', body: JSON.stringify(body) }),
   updateVacation: (id, body) => req(`/vacations/${id}`, { method: 'PUT', body: JSON.stringify(body) }),
   deleteVacation: (id) => req(`/vacations/${id}`, { method: 'DELETE' }),
