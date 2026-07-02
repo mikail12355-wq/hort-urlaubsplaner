@@ -57,13 +57,17 @@ try { db.exec('ALTER TABLE users ADD COLUMN vacation_allowance INTEGER NOT NULL 
 try { db.exec('ALTER TABLE users ADD COLUMN is_approved INTEGER NOT NULL DEFAULT 1'); } catch {}
 try { db.exec('ALTER TABLE users ADD COLUMN vacation_carryover INTEGER NOT NULL DEFAULT 0'); } catch {}
 try { db.exec('ALTER TABLE vacations ADD COLUMN is_approved INTEGER NOT NULL DEFAULT 0'); } catch {}
+try { db.exec("ALTER TABLE vacations ADD COLUMN status TEXT NOT NULL DEFAULT 'pending'"); } catch {}
 
 // Approve all existing vacations (added before approval workflow)
 const vacMigDone = db.prepare("SELECT 1 FROM migrations WHERE name = 'approve_existing_vacations'").get();
 if (!vacMigDone) {
-  db.exec('UPDATE vacations SET is_approved = 1');
+  db.exec("UPDATE vacations SET is_approved = 1, status = 'approved'");
   db.exec("INSERT INTO migrations (name) VALUES ('approve_existing_vacations')");
 }
+
+// Sync status column for any vacations that already have is_approved=1 but status='pending'
+try { db.exec("UPDATE vacations SET status = 'approved' WHERE is_approved = 1 AND status = 'pending'"); } catch {}
 
 // Approve all users that existed before account approval feature
 const userMigDone = db.prepare("SELECT 1 FROM migrations WHERE name = 'approve_existing_users'").get();

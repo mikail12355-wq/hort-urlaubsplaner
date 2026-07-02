@@ -15,7 +15,7 @@ function countWorkingDays(startStr, endStr) {
   return count;
 }
 
-// Month view: approved vacations from all + own pending
+// Month view: approved vacations from all + own pending/rejected
 router.get('/month/:year/:month', authenticate, (req, res) => {
   const { year, month } = req.params;
   const mm = month.padStart(2, '0');
@@ -27,7 +27,7 @@ router.get('/month/:year/:month', authenticate, (req, res) => {
     FROM vacations v
     JOIN users u ON v.user_id = u.id
     WHERE v.start_date <= ? AND v.end_date >= ?
-      AND (v.is_approved = 1 OR v.user_id = ?)
+      AND (v.status = 'approved' OR v.user_id = ?)
     ORDER BY v.start_date, u.last_name
   `).all(endOfMonth, startOfMonth, req.user.id);
 
@@ -36,7 +36,7 @@ router.get('/month/:year/:month', authenticate, (req, res) => {
 
 // Own pending vacation count (for badge)
 router.get('/pending-count', authenticate, (req, res) => {
-  const count = db.prepare('SELECT COUNT(*) as n FROM vacations WHERE user_id = ? AND is_approved = 0').get(req.user.id);
+  const count = db.prepare("SELECT COUNT(*) as n FROM vacations WHERE user_id = ? AND status = 'pending'").get(req.user.id);
   const changes = db.prepare('SELECT COUNT(*) as n FROM pending_changes WHERE user_id = ?').get(req.user.id);
   res.json({ count: (count?.n ?? 0) + (changes?.n ?? 0) });
 });
@@ -84,7 +84,7 @@ router.get('/stats/:year', authenticate, (req, res) => {
 
   const vacations = db.prepare(`
     SELECT * FROM vacations
-    WHERE user_id = ? AND start_date <= ? AND end_date >= ? AND is_approved = 1
+    WHERE user_id = ? AND start_date <= ? AND end_date >= ? AND status = 'approved'
     ORDER BY start_date
   `).all(req.user.id, endOfYear, startOfYear);
 
@@ -121,7 +121,7 @@ router.post('/', authenticate, (req, res) => {
   if (start_date > end_date) return res.status(400).json({ error: 'Startdatum muss vor dem Enddatum liegen.' });
 
   const result = db.prepare(
-    'INSERT INTO vacations (user_id, start_date, end_date, note, is_approved) VALUES (?, ?, ?, ?, 0)'
+    "INSERT INTO vacations (user_id, start_date, end_date, note, is_approved, status) VALUES (?, ?, ?, ?, 0, 'pending')"
   ).run(req.user.id, start_date, end_date, note || null);
 
   const vacation = db.prepare(`
@@ -138,7 +138,7 @@ router.put('/:id', authenticate, (req, res) => {
   const vacation = db.prepare('SELECT * FROM vacations WHERE id = ?').get(req.params.id);
   if (!vacation) return res.status(404).json({ error: 'Urlaub nicht gefunden.' });
   if (vacation.user_id !== req.user.id) return res.status(403).json({ error: 'Keine Berechtigung.' });
-  if (vacation.is_approved) return res.status(403).json({ error: 'Genehmigte Urlaube können nicht bearbeitet werden. Bitte Admin kontaktieren.' });
+  if (vacation.status !== 'pending') return res.status(403).json({ error: 'Nur ausstehende Anträge können bearbeitet werden. Bitte Admin kontaktieren.' });
   if (start_date > end_date) return res.status(400).json({ error: 'Startdatum muss vor dem Enddatum liegen.' });
 
   db.prepare('UPDATE vacations SET start_date = ?, end_date = ?, note = ? WHERE id = ?').run(start_date, end_date, note || null, req.params.id);
@@ -153,7 +153,7 @@ router.delete('/:id', authenticate, (req, res) => {
   const vacation = db.prepare('SELECT * FROM vacations WHERE id = ?').get(req.params.id);
   if (!vacation) return res.status(404).json({ error: 'Urlaub nicht gefunden.' });
   if (vacation.user_id !== req.user.id) return res.status(403).json({ error: 'Keine Berechtigung.' });
-  if (vacation.is_approved) return res.status(403).json({ error: 'Genehmigte Urlaube können nur vom Admin gelöscht werden.' });
+  if (vacation.status === 'approved') return res.status(403).json({ error: 'Genehmigte Urlaube können nur vom Admin gelöscht werden.' });
   db.prepare('DELETE FROM vacations WHERE id = ?').run(req.params.id);
   res.json({ message: 'Urlaub gelöscht.' });
 });

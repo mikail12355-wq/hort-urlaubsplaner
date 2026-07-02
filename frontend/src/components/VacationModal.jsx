@@ -67,7 +67,9 @@ export default function VacationModal({ modal, onClose, onSave, onDelete, stats 
     }
   };
 
-  const isApproved = isEdit && modal.vacation.is_approved;
+  const status = isEdit ? (modal.vacation.status ?? (modal.vacation.is_approved ? 'approved' : 'pending')) : 'pending';
+  const isApproved = status === 'approved';
+  const isRejected = status === 'rejected';
 
   const handleDelete = async () => {
     if (!confirmDelete) return setConfirmDelete(true);
@@ -93,7 +95,11 @@ export default function VacationModal({ modal, onClose, onSave, onDelete, stats 
         <div className="p-6">
           <div className="flex items-center justify-between mb-5">
             <h3 className="text-lg font-semibold text-gray-800">
-              {isEdit ? (isApproved ? '✅ Genehmigter Urlaub' : '⏳ Urlaub bearbeiten') : '+ Urlaub eintragen'}
+              {isEdit
+                ? isRejected ? '✕ Urlaubsantrag abgelehnt'
+                : isApproved ? '✅ Genehmigter Urlaub'
+                : '⏳ Urlaub bearbeiten'
+                : '+ Urlaub eintragen'}
             </h3>
             <button
               onClick={onClose}
@@ -161,6 +167,12 @@ export default function VacationModal({ modal, onClose, onSave, onDelete, stats 
               />
             </div>
 
+            {isRejected && (
+              <div className="bg-red-50 border border-red-200 text-red-700 text-sm rounded-xl px-4 py-3">
+                <p className="font-semibold mb-1">Dein Urlaubsantrag wurde abgelehnt.</p>
+                <p className="text-red-600 text-xs">Du kannst diesen Eintrag entfernen und ggf. einen neuen Antrag stellen.</p>
+              </div>
+            )}
             {isApproved && (
               <div className="bg-blue-50 border border-blue-100 text-blue-700 text-sm rounded-xl px-4 py-3">
                 Dieser Urlaub wurde bereits genehmigt und kann nicht mehr bearbeitet werden. Für Änderungen bitte den Admin kontaktieren.
@@ -174,7 +186,7 @@ export default function VacationModal({ modal, onClose, onSave, onDelete, stats 
             )}
 
             <div className="flex gap-2 pt-1">
-              {isEdit && !isApproved && (
+              {isEdit && (isRejected || !isApproved) && (
                 <button
                   type="button"
                   onClick={handleDelete}
@@ -195,7 +207,7 @@ export default function VacationModal({ modal, onClose, onSave, onDelete, stats 
               >
                 Abbrechen
               </button>
-              {!isApproved && (
+              {!isApproved && !isRejected && (
                 <button
                   type="submit"
                   disabled={loading}

@@ -136,7 +136,7 @@ router.get('/pending', authenticateAdmin, (req, res) => {
   const vacations = db.prepare(`
     SELECT v.*, u.first_name, u.last_name
     FROM vacations v JOIN users u ON v.user_id = u.id
-    WHERE v.is_approved = 0
+    WHERE v.status = 'pending'
     ORDER BY v.created_at
   `).all();
 
@@ -151,15 +151,15 @@ router.get('/pending', authenticateAdmin, (req, res) => {
 
 // Approve a pending vacation
 router.put('/vacations/:id/approve', authenticateAdmin, (req, res) => {
-  const result = db.prepare('UPDATE vacations SET is_approved = 1 WHERE id = ? AND is_approved = 0').run(req.params.id);
+  const result = db.prepare("UPDATE vacations SET is_approved = 1, status = 'approved' WHERE id = ? AND status = 'pending'").run(req.params.id);
   if (result.changes === 0) return res.status(404).json({ error: 'Urlaub nicht gefunden oder bereits genehmigt.' });
   res.json({ message: 'Urlaub genehmigt.' });
 });
 
-// Reject a pending vacation (delete it)
+// Reject a pending vacation (mark as rejected, stays visible to educator)
 router.delete('/vacations/:id/reject', authenticateAdmin, (req, res) => {
-  const result = db.prepare('DELETE FROM vacations WHERE id = ? AND is_approved = 0').run(req.params.id);
-  if (result.changes === 0) return res.status(404).json({ error: 'Urlaub nicht gefunden oder bereits genehmigt.' });
+  const result = db.prepare("UPDATE vacations SET status = 'rejected' WHERE id = ? AND status = 'pending'").run(req.params.id);
+  if (result.changes === 0) return res.status(404).json({ error: 'Urlaub nicht gefunden oder bereits bearbeitet.' });
   res.json({ message: 'Urlaub abgelehnt.' });
 });
 

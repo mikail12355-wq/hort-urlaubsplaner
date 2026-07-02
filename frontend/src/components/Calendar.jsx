@@ -334,18 +334,22 @@ export default function Calendar() {
                   {dayVacs.slice(0, 3).map((v) => {
                     const color = colorFor(v.user_id);
                     const isOwn = v.user_id === user.id;
-                    const isPending = !v.is_approved;
+                    const isPending = v.status === 'pending';
+                    const isRejected = v.status === 'rejected';
                     return (
                       <div
                         key={v.id}
                         onClick={(e) => handleVacationClick(e, v)}
-                        title={`${v.first_name} ${v.last_name}${v.note ? ' – ' + v.note : ''}${isPending ? ' (ausstehend)' : ''}`}
+                        title={`${v.first_name} ${v.last_name}${v.note ? ' – ' + v.note : ''}${isPending ? ' (ausstehend)' : isRejected ? ' (abgelehnt – klicken zum Entfernen)' : ''}`}
                         className={`text-[10px] sm:text-xs px-1.5 py-0.5 rounded-md truncate font-medium leading-tight
-                          ${isPending ? 'opacity-50 border border-dashed border-current' : color.badge}
-                          ${isPending ? 'bg-gray-100 text-gray-500' : ''}
-                          ${isOwn ? 'cursor-pointer hover:brightness-95' : 'cursor-default'}`}
+                          ${isRejected ? 'bg-red-100 text-red-500 line-through border border-red-300 cursor-pointer' : ''}
+                          ${isPending ? 'bg-gray-100 text-gray-400 border border-dashed border-gray-300 cursor-pointer' : ''}
+                          ${!isPending && !isRejected ? color.badge : ''}
+                          ${isOwn && !isRejected && !isPending ? 'cursor-pointer hover:brightness-95' : ''}
+                          ${!isOwn && !isRejected ? 'cursor-default' : ''}`}
                       >
                         {isPending && '⏳ '}
+                        {isRejected && '✕ '}
                         <span className="hidden sm:inline">{v.first_name} {v.last_name[0]}.</span>
                         <span className="sm:hidden">{v.first_name[0]}{v.last_name[0]}</span>
                       </div>
@@ -388,13 +392,31 @@ export default function Calendar() {
               return (
                 <li
                   key={v.id}
-                  className={`px-5 py-3 flex items-center gap-3 ${isOwn ? 'hover:bg-indigo-50/30' : ''}`}
+                  className={`px-5 py-3 flex items-center gap-3 ${
+                    v.status === 'rejected' ? 'bg-red-50/50' :
+                    v.status === 'pending' ? 'bg-amber-50/30' :
+                    isOwn ? 'hover:bg-indigo-50/30' : ''
+                  }`}
                 >
-                  <div className={`w-2 h-2 rounded-full flex-shrink-0 ${color.dot}`} />
-                  <span className={`text-sm font-medium px-2 py-0.5 rounded-lg ${color.badge}`}>
+                  <div className={`w-2 h-2 rounded-full flex-shrink-0 ${
+                    v.status === 'rejected' ? 'bg-red-400' :
+                    v.status === 'pending' ? 'bg-gray-300' :
+                    color.dot
+                  }`} />
+                  <span className={`text-sm font-medium px-2 py-0.5 rounded-lg ${
+                    v.status === 'rejected' ? 'bg-red-100 text-red-700 line-through' :
+                    v.status === 'pending' ? 'bg-gray-100 text-gray-500' :
+                    color.badge
+                  }`}>
                     {v.first_name} {v.last_name}
                     {isOwn && <span className="ml-1 text-[10px] opacity-60">(du)</span>}
                   </span>
+                  {v.status === 'rejected' && (
+                    <span className="text-xs text-red-500 font-medium">Abgelehnt</span>
+                  )}
+                  {v.status === 'pending' && (
+                    <span className="text-xs text-amber-500 font-medium">⏳ Ausstehend</span>
+                  )}
                   <span className="text-sm text-gray-500 flex-1">
                     {formatDE(v.start_date)}
                     {v.start_date !== v.end_date && ` – ${formatDE(v.end_date)}`}
