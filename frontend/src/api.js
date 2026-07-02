@@ -51,5 +51,10 @@ export const adminApi = {
   updateAllowance: (id, allowance) => adminReq(`/users/${id}/allowance`, { method: 'PUT', body: JSON.stringify({ allowance }) }),
   approveUser: (id) => adminReq(`/users/${id}/approve`, { method: 'PUT' }),
   approveAll: () => adminReq('/users/approve-all', { method: 'PUT' }),
+  getPending: () => adminReq('/pending'),
+  approveVacation: (id) => adminReq(`/vacations/${id}/approve`, { method: 'PUT' }),
+  rejectVacation: (id) => adminReq(`/vacations/${id}/reject`, { method: 'DELETE' }),
+  approveChange: (id) => adminReq(`/changes/${id}/approve`, { method: 'PUT' }),
+  rejectChange: (id) => adminReq(`/changes/${id}/reject`, { method: 'DELETE' }),
   updateCarryover: (id, carryover, year) => adminReq(`/users/${id}/carryover`, { method: 'PUT', body: JSON.stringify({ carryover, year }) }),
 };

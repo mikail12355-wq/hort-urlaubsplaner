@@ -124,8 +124,15 @@ function StatsCard({ stats, year, onYearChange, onAllowanceChange }) {
           <div className="font-bold text-indigo-700 text-sm">{stats.used_days} / {total}</div>
         </div>
       </div>
+      {(stats.pending_allowance !== null || stats.pending_carryover !== null) && (
+        <div className="mt-3 bg-amber-50 border border-amber-200 rounded-xl px-3 py-2 text-xs text-amber-700">
+          ⏳ Ausstehend (wartet auf Admin):
+          {stats.pending_allowance !== null && <span className="ml-1 font-medium">Standard → {stats.pending_allowance} Tage</span>}
+          {stats.pending_carryover !== null && <span className="ml-1 font-medium">Übertrag → {stats.pending_carryover} Tage</span>}
+        </div>
+      )}
       <p className="text-xs text-gray-400 mt-2 italic">
-        Klick auf die Tageszahl zum einmaligen Festlegen deines Jahres-Standards.
+        Änderungen werden dem Admin zur Genehmigung vorgelegt.
       </p>
     </div>
   );
@@ -327,15 +334,18 @@ export default function Calendar() {
                   {dayVacs.slice(0, 3).map((v) => {
                     const color = colorFor(v.user_id);
                     const isOwn = v.user_id === user.id;
+                    const isPending = !v.is_approved;
                     return (
                       <div
                         key={v.id}
                         onClick={(e) => handleVacationClick(e, v)}
-                        title={`${v.first_name} ${v.last_name}${v.note ? ' – ' + v.note : ''}`}
+                        title={`${v.first_name} ${v.last_name}${v.note ? ' – ' + v.note : ''}${isPending ? ' (ausstehend)' : ''}`}
                         className={`text-[10px] sm:text-xs px-1.5 py-0.5 rounded-md truncate font-medium leading-tight
-                          ${color.badge}
-                          ${isOwn ? 'cursor-pointer hover:brightness-95 outline outline-1 outline-current/30' : 'cursor-default'}`}
+                          ${isPending ? 'opacity-50 border border-dashed border-current' : color.badge}
+                          ${isPending ? 'bg-gray-100 text-gray-500' : ''}
+                          ${isOwn ? 'cursor-pointer hover:brightness-95' : 'cursor-default'}`}
                       >
+                        {isPending && '⏳ '}
                         <span className="hidden sm:inline">{v.first_name} {v.last_name[0]}.</span>
                         <span className="sm:hidden">{v.first_name[0]}{v.last_name[0]}</span>
                       </div>

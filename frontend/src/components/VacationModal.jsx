@@ -67,6 +67,8 @@ export default function VacationModal({ modal, onClose, onSave, onDelete, stats 
     }
   };
 
+  const isApproved = isEdit && modal.vacation.is_approved;
+
   const handleDelete = async () => {
     if (!confirmDelete) return setConfirmDelete(true);
     setLoading(true);
@@ -91,7 +93,7 @@ export default function VacationModal({ modal, onClose, onSave, onDelete, stats 
         <div className="p-6">
           <div className="flex items-center justify-between mb-5">
             <h3 className="text-lg font-semibold text-gray-800">
-              {isEdit ? '✏️ Urlaub bearbeiten' : '+ Urlaub eintragen'}
+              {isEdit ? (isApproved ? '✅ Genehmigter Urlaub' : '⏳ Urlaub bearbeiten') : '+ Urlaub eintragen'}
             </h3>
             <button
               onClick={onClose}
@@ -159,6 +161,12 @@ export default function VacationModal({ modal, onClose, onSave, onDelete, stats 
               />
             </div>
 
+            {isApproved && (
+              <div className="bg-blue-50 border border-blue-100 text-blue-700 text-sm rounded-xl px-4 py-3">
+                Dieser Urlaub wurde bereits genehmigt und kann nicht mehr bearbeitet werden. Für Änderungen bitte den Admin kontaktieren.
+              </div>
+            )}
+
             {error && (
               <div className="bg-red-50 border border-red-100 text-red-600 text-sm rounded-xl px-4 py-3">
                 {error}
@@ -166,7 +174,7 @@ export default function VacationModal({ modal, onClose, onSave, onDelete, stats 
             )}
 
             <div className="flex gap-2 pt-1">
-              {isEdit && (
+              {isEdit && !isApproved && (
                 <button
                   type="button"
                   onClick={handleDelete}
@@ -187,13 +195,15 @@ export default function VacationModal({ modal, onClose, onSave, onDelete, stats 
               >
                 Abbrechen
               </button>
-              <button
-                type="submit"
-                disabled={loading}
-                className="flex-1 bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-medium py-2.5 rounded-xl transition-colors disabled:opacity-60"
-              >
-                {loading ? '...' : isEdit ? 'Speichern' : 'Eintragen'}
-              </button>
+              {!isApproved && (
+                <button
+                  type="submit"
+                  disabled={loading}
+                  className="flex-1 bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-medium py-2.5 rounded-xl transition-colors disabled:opacity-60"
+                >
+                  {loading ? '...' : isEdit ? 'Speichern' : 'Beantragen'}
+                </button>
+              )}
             </div>
           </form>
         </div>

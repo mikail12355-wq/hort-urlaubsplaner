@@ -129,4 +129,63 @@ router.delete('/vacations/:id', authenticateAdmin, (req, res) => {
   res.json({ message: 'Urlaub gelöscht.' });
 });
 
+// --- Approval endpoints ---
+
+// Get all pending items (vacations + changes)
+router.get('/pending', authenticateAdmin, (req, res) => {
+  const vacations = db.prepare(`
+    SELECT v.*, u.first_name, u.last_name
+    FROM vacations v JOIN users u ON v.user_id = u.id
+    WHERE v.is_approved = 0
+    ORDER BY v.created_at
+  `).all();
+
+  const changes = db.prepare(`
+    SELECT pc.*, u.first_name, u.last_name
+    FROM pending_changes pc JOIN users u ON pc.user_id = u.id
+    ORDER BY pc.created_at
+  `).all();
+
+  res.json({ vacations, changes });
+});
+
+// Approve a pending vacation
+router.put('/vacations/:id/approve', authenticateAdmin, (req, res) => {
+  const result = db.prepare('UPDATE vacations SET is_approved = 1 WHERE id = ? AND is_approved = 0').run(req.params.id);
+  if (result.changes === 0) return res.status(404).json({ error: 'Urlaub nicht gefunden oder bereits genehmigt.' });
+  res.json({ message: 'Urlaub genehmigt.' });
+});
+
+// Reject a pending vacation (delete it)
+router.delete('/vacations/:id/reject', authenticateAdmin, (req, res) => {
+  const result = db.prepare('DELETE FROM vacations WHERE id = ? AND is_approved = 0').run(req.params.id);
+  if (result.changes === 0) return res.status(404).json({ error: 'Urlaub nicht gefunden oder bereits genehmigt.' });
+  res.json({ message: 'Urlaub abgelehnt.' });
+});
+
+// Approve a pending change (allowance or carryover)
+router.put('/changes/:id/approve', authenticateAdmin, (req, res) => {
+  const change = db.prepare('SELECT * FROM pending_changes WHERE id = ?').get(req.params.id);
+  if (!change) return res.status(404).json({ error: 'Änderung nicht gefunden.' });
+
+  if (change.type === 'allowance') {
+    db.prepare('UPDATE users SET vacation_allowance = ? WHERE id = ?').run(change.new_value, change.user_id);
+  } else if (change.type === 'carryover') {
+    db.prepare(`
+      INSERT INTO vacation_year_data (user_id, year, carryover) VALUES (?, ?, ?)
+      ON CONFLICT(user_id, year) DO UPDATE SET carryover = excluded.carryover
+    `).run(change.user_id, change.year, change.new_value);
+  }
+
+  db.prepare('DELETE FROM pending_changes WHERE id = ?').run(req.params.id);
+  res.json({ message: 'Änderung genehmigt und übernommen.' });
+});
+
+// Reject a pending change
+router.delete('/changes/:id/reject', authenticateAdmin, (req, res) => {
+  const result = db.prepare('DELETE FROM pending_changes WHERE id = ?').run(req.params.id);
+  if (result.changes === 0) return res.status(404).json({ error: 'Änderung nicht gefunden.' });
+  res.json({ message: 'Änderung abgelehnt.' });
+});
+
 export default router;

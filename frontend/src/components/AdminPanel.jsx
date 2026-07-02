@@ -104,9 +104,10 @@ function ResetPasswordModal({ user, onClose, onDone }) {
 const THIS_YEAR = new Date().getFullYear();
 
 export default function AdminPanel({ onLogout }) {
-  const [tab, setTab] = useState('users');
+  const [tab, setTab] = useState('pending');
   const [users, setUsers] = useState([]);
   const [vacations, setVacations] = useState([]);
+  const [pending, setPending] = useState({ vacations: [], changes: [] });
   const [loading, setLoading] = useState(false);
   const [resetModal, setResetModal] = useState(null);
   const [confirmDelete, setConfirmDelete] = useState(null);
@@ -120,16 +121,41 @@ export default function AdminPanel({ onLogout }) {
     try { setVacations(await adminApi.getVacations()); } catch {}
   }, []);
 
+  const fetchPending = useCallback(async () => {
+    try { setPending(await adminApi.getPending()); } catch {}
+  }, []);
+
   useEffect(() => {
     setLoading(true);
-    Promise.all([fetchUsers(), fetchVacations()]).finally(() => setLoading(false));
-  }, [fetchUsers, fetchVacations]);
+    Promise.all([fetchUsers(), fetchVacations(), fetchPending()]).finally(() => setLoading(false));
+  }, [fetchUsers, fetchVacations, fetchPending]);
 
-  const pending = users.filter((u) => !u.is_approved);
+  const pendingUsers = users.filter((u) => !u.is_approved);
   const approved = users.filter((u) => u.is_approved);
+  const totalPending = (pending.vacations?.length ?? 0) + (pending.changes?.length ?? 0) + pendingUsers.length;
 
   const handleApprove = async (id) => {
-    try { await adminApi.approveUser(id); fetchUsers(); }
+    try { await adminApi.approveUser(id); fetchUsers(); fetchPending(); }
+    catch (err) { alert(err.message); }
+  };
+
+  const handleApproveVacation = async (id) => {
+    try { await adminApi.approveVacation(id); fetchPending(); fetchVacations(); }
+    catch (err) { alert(err.message); }
+  };
+
+  const handleRejectVacation = async (id) => {
+    try { await adminApi.rejectVacation(id); fetchPending(); fetchVacations(); }
+    catch (err) { alert(err.message); }
+  };
+
+  const handleApproveChange = async (id) => {
+    try { await adminApi.approveChange(id); fetchPending(); fetchUsers(); }
+    catch (err) { alert(err.message); }
+  };
+
+  const handleRejectChange = async (id) => {
+    try { await adminApi.rejectChange(id); fetchPending(); }
     catch (err) { alert(err.message); }
   };
 
@@ -163,41 +189,36 @@ export default function AdminPanel({ onLogout }) {
 
       <main className="max-w-4xl mx-auto px-4 py-6 space-y-5">
 
-        {/* Pending approvals */}
-        {pending.length > 0 && (
+        {/* Pending approvals - always show as first tab content */}
+        {pendingUsers.length > 0 && (
           <div className="bg-amber-900/30 border border-amber-700/50 rounded-2xl overflow-hidden">
             <div className="px-5 py-3 border-b border-amber-700/30 flex items-center justify-between gap-2">
               <div className="flex items-center gap-2">
                 <span className="w-2 h-2 rounded-full bg-amber-400 animate-pulse" />
                 <h3 className="font-semibold text-amber-300 text-sm">
-                  {pending.length} Konto{pending.length > 1 ? 's' : ''} wartet auf Freigabe
+                  {pendingUsers.length} Konto{pendingUsers.length > 1 ? 's' : ''} wartet auf Freigabe
                 </h3>
               </div>
-              {pending.length > 1 && (
-                <button
-                  onClick={async () => { await adminApi.approveAll(); fetchUsers(); }}
+              {pendingUsers.length > 1 && (
+                <button onClick={async () => { await adminApi.approveAll(); fetchUsers(); fetchPending(); }}
                   className="text-xs px-3 py-1.5 rounded-lg bg-amber-500/30 text-amber-300 hover:bg-amber-500/50 transition-colors font-medium">
                   Alle freigeben
                 </button>
               )}
             </div>
             <ul className="divide-y divide-amber-700/20">
-              {pending.map((u) => (
+              {pendingUsers.map((u) => (
                 <li key={u.id} className="px-5 py-3 flex items-center gap-3">
                   <div className="flex-1">
                     <p className="font-medium text-white text-sm">{u.first_name} {u.last_name}</p>
-                    <p className="text-xs text-gray-500">
-                      {u.created_at ? u.created_at.slice(0, 10).split('-').reverse().join('.') : ''}
-                    </p>
+                    <p className="text-xs text-gray-500">{u.created_at?.slice(0,10).split('-').reverse().join('.') ?? ''}</p>
                   </div>
                   <button onClick={() => handleApprove(u.id)}
                     className="text-sm px-4 py-1.5 rounded-lg bg-amber-500 hover:bg-amber-400 text-white font-medium transition-colors">
                     ✓ Freigeben
                   </button>
                   <button onClick={() => handleDeleteUser(u.id)}
-                    className={`text-xs px-3 py-1.5 rounded-lg font-medium transition-colors ${
-                      confirmDelete === u.id ? 'bg-red-600 text-white' : 'bg-red-900/20 text-red-400 hover:bg-red-900/40'
-                    }`}>
+                    className={`text-xs px-3 py-1.5 rounded-lg font-medium transition-colors ${confirmDelete === u.id ? 'bg-red-600 text-white' : 'bg-red-900/20 text-red-400 hover:bg-red-900/40'}`}>
                     {confirmDelete === u.id ? 'Wirklich?' : 'Ablehnen'}
                   </button>
                 </li>
@@ -207,19 +228,97 @@ export default function AdminPanel({ onLogout }) {
         )}
 
         {/* Tabs */}
-        <div className="flex gap-1 bg-gray-800 p-1 rounded-xl w-fit">
+        <div className="flex gap-1 bg-gray-800 p-1 rounded-xl w-fit flex-wrap">
+          <button onClick={() => setTab('pending')}
+            className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors flex items-center gap-1.5 ${tab === 'pending' ? 'bg-amber-500 text-white' : 'text-gray-400 hover:text-white'}`}>
+            Genehmigungen
+            {totalPending > 0 && <span className="bg-white/20 text-xs px-1.5 py-0.5 rounded-full">{totalPending}</span>}
+          </button>
           <button onClick={() => setTab('users')}
-            className={`px-5 py-2 rounded-lg text-sm font-medium transition-colors ${tab === 'users' ? 'bg-indigo-600 text-white' : 'text-gray-400 hover:text-white'}`}>
+            className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${tab === 'users' ? 'bg-indigo-600 text-white' : 'text-gray-400 hover:text-white'}`}>
             Erzieher ({approved.length})
           </button>
           <button onClick={() => setTab('vacations')}
-            className={`px-5 py-2 rounded-lg text-sm font-medium transition-colors ${tab === 'vacations' ? 'bg-indigo-600 text-white' : 'text-gray-400 hover:text-white'}`}>
-            Urlaube ({vacations.length})
+            className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${tab === 'vacations' ? 'bg-indigo-600 text-white' : 'text-gray-400 hover:text-white'}`}>
+            Alle Urlaube ({vacations.filter(v => v.is_approved).length})
           </button>
         </div>
 
         {loading ? (
           <div className="text-center text-gray-500 py-12">Laden…</div>
+        ) : tab === 'pending' ? (
+          <div className="space-y-4">
+            {(pending.vacations?.length === 0 && pending.changes?.length === 0) ? (
+              <div className="bg-gray-800 rounded-2xl border border-gray-700 py-12 text-center text-gray-500">
+                <div className="text-3xl mb-2">✅</div>
+                Keine ausstehenden Genehmigungen.
+              </div>
+            ) : (
+              <>
+                {pending.vacations?.length > 0 && (
+                  <div className="bg-gray-800 rounded-2xl overflow-hidden border border-gray-700">
+                    <div className="px-5 py-3 border-b border-gray-700 text-sm font-semibold text-amber-300">
+                      🏖️ Urlaubsanträge ({pending.vacations.length})
+                    </div>
+                    <ul className="divide-y divide-gray-700/50">
+                      {pending.vacations.map((v) => (
+                        <li key={v.id} className="px-5 py-3 flex items-center gap-3 flex-wrap">
+                          <div className="flex-1 min-w-0">
+                            <p className="font-medium text-white text-sm">{v.first_name} {v.last_name}</p>
+                            <p className="text-xs text-gray-400">
+                              {formatDE(v.start_date)} – {formatDE(v.end_date)}
+                              {v.note && <span className="italic ml-2 text-gray-500">„{v.note}"</span>}
+                            </p>
+                          </div>
+                          <div className="flex gap-2">
+                            <button onClick={() => handleApproveVacation(v.id)}
+                              className="text-xs px-3 py-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white font-medium transition-colors">
+                              ✓ Genehmigen
+                            </button>
+                            <button onClick={() => handleRejectVacation(v.id)}
+                              className="text-xs px-3 py-1.5 rounded-lg bg-red-900/30 text-red-400 hover:bg-red-900/50 font-medium transition-colors">
+                              ✕ Ablehnen
+                            </button>
+                          </div>
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                )}
+                {pending.changes?.length > 0 && (
+                  <div className="bg-gray-800 rounded-2xl overflow-hidden border border-gray-700">
+                    <div className="px-5 py-3 border-b border-gray-700 text-sm font-semibold text-indigo-300">
+                      ✏️ Kontingent-Änderungen ({pending.changes.length})
+                    </div>
+                    <ul className="divide-y divide-gray-700/50">
+                      {pending.changes.map((c) => (
+                        <li key={c.id} className="px-5 py-3 flex items-center gap-3 flex-wrap">
+                          <div className="flex-1 min-w-0">
+                            <p className="font-medium text-white text-sm">{c.first_name} {c.last_name}</p>
+                            <p className="text-xs text-gray-400">
+                              {c.type === 'allowance'
+                                ? `Jahresurlaub → ${c.new_value} Tage`
+                                : `Übertrag ${c.year} → ${c.new_value} Tage`}
+                            </p>
+                          </div>
+                          <div className="flex gap-2">
+                            <button onClick={() => handleApproveChange(c.id)}
+                              className="text-xs px-3 py-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white font-medium transition-colors">
+                              ✓ Genehmigen
+                            </button>
+                            <button onClick={() => handleRejectChange(c.id)}
+                              className="text-xs px-3 py-1.5 rounded-lg bg-red-900/30 text-red-400 hover:bg-red-900/50 font-medium transition-colors">
+                              ✕ Ablehnen
+                            </button>
+                          </div>
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                )}
+              </>
+            )}
+          </div>
         ) : tab === 'users' ? (
           <div className="bg-gray-800 rounded-2xl overflow-hidden border border-gray-700">
             {approved.length === 0 ? (
