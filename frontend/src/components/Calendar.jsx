@@ -336,20 +336,22 @@ export default function Calendar() {
                     const isOwn = v.user_id === user.id;
                     const isPending = v.status === 'pending';
                     const isRejected = v.status === 'rejected';
+                    const isDeleteRequested = v.status === 'approved' && !!v.delete_requested;
                     return (
                       <div
                         key={v.id}
                         onClick={(e) => handleVacationClick(e, v)}
-                        title={`${v.first_name} ${v.last_name}${v.note ? ' – ' + v.note : ''}${isPending ? ' (ausstehend)' : isRejected ? ' (abgelehnt – klicken zum Entfernen)' : ''}`}
+                        title={`${v.first_name} ${v.last_name}${v.note ? ' – ' + v.note : ''}${isPending ? ' (ausstehend)' : isRejected ? ' (abgelehnt)' : isDeleteRequested ? ' (Löschung beantragt)' : ''}`}
                         className={`text-[10px] sm:text-xs px-1.5 py-0.5 rounded-md truncate font-medium leading-tight
-                          ${isRejected ? 'bg-red-100 text-red-500 line-through border border-red-300 cursor-pointer' : ''}
-                          ${isPending ? 'bg-gray-100 text-gray-400 border border-dashed border-gray-300 cursor-pointer' : ''}
+                          ${isRejected ? 'bg-red-100 text-red-500 line-through border border-red-300' : ''}
+                          ${isPending ? 'bg-gray-100 text-gray-400 border border-dashed border-gray-300' : ''}
+                          ${isDeleteRequested ? 'border border-dashed border-orange-400 opacity-60' : ''}
                           ${!isPending && !isRejected ? color.badge : ''}
-                          ${isOwn && !isRejected && !isPending ? 'cursor-pointer hover:brightness-95' : ''}
-                          ${!isOwn && !isRejected ? 'cursor-default' : ''}`}
+                          ${isOwn ? 'cursor-pointer hover:brightness-95' : 'cursor-default'}`}
                       >
                         {isPending && '⏳ '}
                         {isRejected && '✕ '}
+                        {isDeleteRequested && '🗑️ '}
                         <span className="hidden sm:inline">{v.first_name} {v.last_name[0]}.</span>
                         <span className="sm:hidden">{v.first_name[0]}{v.last_name[0]}</span>
                       </div>

@@ -25,6 +25,8 @@ export const api = {
   addVacation: (body) => req('/vacations', { method: 'POST', body: JSON.stringify(body) }),
   updateVacation: (id, body) => req(`/vacations/${id}`, { method: 'PUT', body: JSON.stringify(body) }),
   requestVacationChange: (id, body) => req(`/vacations/change-request/${id}`, { method: 'POST', body: JSON.stringify(body) }),
+  requestVacationDelete: (id) => req(`/vacations/delete-request/${id}`, { method: 'PUT' }),
+  cancelVacationDeleteRequest: (id) => req(`/vacations/delete-request/${id}`, { method: 'DELETE' }),
   deleteVacation: (id) => req(`/vacations/${id}`, { method: 'DELETE' }),
 };
 
@@ -55,6 +57,7 @@ export const adminApi = {
   getPending: () => adminReq('/pending'),
   approveVacation: (id) => adminReq(`/vacations/${id}/approve`, { method: 'PUT' }),
   rejectVacation: (id) => adminReq(`/vacations/${id}/reject`, { method: 'DELETE' }),
+  approveVacationDelete: (id) => adminReq(`/vacations/${id}/approve-delete`, { method: 'DELETE' }),
   approveChange: (id) => adminReq(`/changes/${id}/approve`, { method: 'PUT' }),
   rejectChange: (id) => adminReq(`/changes/${id}/reject`, { method: 'DELETE' }),
   updateCarryover: (id, carryover, year) => adminReq(`/users/${id}/carryover`, { method: 'PUT', body: JSON.stringify({ carryover, year }) }),

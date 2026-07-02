@@ -72,7 +72,8 @@ export default function VacationModal({ modal, onClose, onSave, onDelete, stats 
   const status = isEdit ? (modal.vacation.status ?? (modal.vacation.is_approved ? 'approved' : 'pending')) : 'pending';
   const isApproved = status === 'approved';
   const isRejected = status === 'rejected';
-  const [changeMode, setChangeMode] = useState(false); // for approved: show edit form
+  const [changeMode, setChangeMode] = useState(false);
+  const isDeleteRequested = isEdit && !!modal.vacation.delete_requested;
 
   const handleDelete = async () => {
     if (!confirmDelete) return setConfirmDelete(true);
@@ -179,12 +180,34 @@ export default function VacationModal({ modal, onClose, onSave, onDelete, stats 
               </div>
             )}
             {isApproved && !changeMode && (
-              <div className="bg-blue-50 border border-blue-100 text-blue-700 text-sm rounded-xl px-4 py-3 flex items-center justify-between gap-3">
-                <span className="text-sm">Genehmigt — Änderung nötig?</span>
-                <button onClick={() => setChangeMode(true)}
-                  className="text-xs bg-blue-600 hover:bg-blue-700 text-white px-3 py-1.5 rounded-lg font-medium transition-colors whitespace-nowrap">
-                  Änderung beantragen
-                </button>
+              <div className="bg-blue-50 border border-blue-100 text-blue-700 text-sm rounded-xl px-4 py-3 space-y-2">
+                {isDeleteRequested ? (
+                  <div className="flex items-center justify-between gap-2">
+                    <span className="text-sm text-orange-700 font-medium">🗑️ Löschantrag ausstehend</span>
+                    <button
+                      type="button"
+                      onClick={async () => { await api.cancelVacationDeleteRequest(modal.vacation.id); onSave(); }}
+                      className="text-xs bg-orange-100 hover:bg-orange-200 text-orange-700 px-3 py-1.5 rounded-lg font-medium transition-colors">
+                      Antrag zurückziehen
+                    </button>
+                  </div>
+                ) : (
+                  <div className="flex items-center justify-between gap-2 flex-wrap">
+                    <span className="text-sm">Genehmigt — Anpassung nötig?</span>
+                    <div className="flex gap-2">
+                      <button onClick={() => setChangeMode(true)}
+                        className="text-xs bg-blue-600 hover:bg-blue-700 text-white px-3 py-1.5 rounded-lg font-medium transition-colors">
+                        Änderung beantragen
+                      </button>
+                      <button
+                        type="button"
+                        onClick={async () => { await api.requestVacationDelete(modal.vacation.id); onSave(); }}
+                        className="text-xs bg-red-100 hover:bg-red-200 text-red-600 px-3 py-1.5 rounded-lg font-medium transition-colors">
+                        Löschung beantragen
+                      </button>
+                    </div>
+                  </div>
+                )}
               </div>
             )}
             {isApproved && changeMode && (

@@ -136,7 +136,7 @@ router.get('/pending', authenticateAdmin, (req, res) => {
   const vacations = db.prepare(`
     SELECT v.*, u.first_name, u.last_name
     FROM vacations v JOIN users u ON v.user_id = u.id
-    WHERE v.status = 'pending'
+    WHERE v.status = 'pending' OR (v.status = 'approved' AND v.delete_requested = 1)
     ORDER BY v.created_at
   `).all();
 
@@ -164,9 +164,25 @@ router.put('/vacations/:id/approve', authenticateAdmin, (req, res) => {
 
 // Reject a pending vacation (mark as rejected, stays visible to educator)
 router.delete('/vacations/:id/reject', authenticateAdmin, (req, res) => {
+  const vacation = db.prepare('SELECT * FROM vacations WHERE id = ?').get(req.params.id);
+  if (!vacation) return res.status(404).json({ error: 'Urlaub nicht gefunden.' });
+
+  // If it's a delete request: just clear the flag
+  if (vacation.delete_requested && vacation.status === 'approved') {
+    db.prepare('UPDATE vacations SET delete_requested = 0 WHERE id = ?').run(req.params.id);
+    return res.json({ message: 'Löschantrag abgelehnt – Urlaub bleibt bestehen.' });
+  }
+
   const result = db.prepare("UPDATE vacations SET status = 'rejected' WHERE id = ? AND status = 'pending'").run(req.params.id);
   if (result.changes === 0) return res.status(404).json({ error: 'Urlaub nicht gefunden oder bereits bearbeitet.' });
   res.json({ message: 'Urlaub abgelehnt.' });
+});
+
+// Approve a delete request (actually delete the vacation)
+router.delete('/vacations/:id/approve-delete', authenticateAdmin, (req, res) => {
+  const result = db.prepare('DELETE FROM vacations WHERE id = ? AND delete_requested = 1').run(req.params.id);
+  if (result.changes === 0) return res.status(404).json({ error: 'Kein Löschantrag gefunden.' });
+  res.json({ message: 'Urlaub gelöscht.' });
 });
 
 // Approve a pending change (allowance or carryover)

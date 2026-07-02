@@ -261,28 +261,50 @@ export default function AdminPanel({ onLogout }) {
                       🏖️ Urlaubsanträge ({pending.vacations.length})
                     </div>
                     <ul className="divide-y divide-gray-700/50">
-                      {pending.vacations.map((v) => (
+                      {pending.vacations.map((v) => {
+                        const isDeleteReq = v.status === 'approved' && v.delete_requested;
+                        return (
                         <li key={v.id} className="px-5 py-3 flex items-center gap-3 flex-wrap">
                           <div className="flex-1 min-w-0">
                             <p className="font-medium text-white text-sm">{v.first_name} {v.last_name}</p>
                             <p className="text-xs text-gray-400">
                               {formatDE(v.start_date)} – {formatDE(v.end_date)}
                               {v.note && <span className="italic ml-2 text-gray-500">„{v.note}"</span>}
-                              {v.replaces_id && <span className="ml-2 text-amber-400 font-medium">Änderungsantrag</span>}
+                            </p>
+                            <p className="text-xs mt-0.5">
+                              {isDeleteReq && <span className="text-orange-400 font-medium">🗑️ Löschantrag</span>}
+                              {v.replaces_id && <span className="text-amber-400 font-medium">✏️ Änderungsantrag</span>}
+                              {!isDeleteReq && !v.replaces_id && <span className="text-emerald-400">Neuer Antrag</span>}
                             </p>
                           </div>
                           <div className="flex gap-2">
-                            <button onClick={() => handleApproveVacation(v.id)}
-                              className="text-xs px-3 py-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white font-medium transition-colors">
-                              ✓ Genehmigen
-                            </button>
-                            <button onClick={() => handleRejectVacation(v.id)}
-                              className="text-xs px-3 py-1.5 rounded-lg bg-red-900/30 text-red-400 hover:bg-red-900/50 font-medium transition-colors">
-                              ✕ Ablehnen
-                            </button>
+                            {isDeleteReq ? (
+                              <>
+                                <button onClick={async () => { await adminApi.approveVacationDelete(v.id); fetchPending(); fetchVacations(); }}
+                                  className="text-xs px-3 py-1.5 rounded-lg bg-red-600 hover:bg-red-500 text-white font-medium transition-colors">
+                                  🗑️ Löschen
+                                </button>
+                                <button onClick={() => handleRejectVacation(v.id)}
+                                  className="text-xs px-3 py-1.5 rounded-lg bg-gray-700 text-gray-300 hover:bg-gray-600 font-medium transition-colors">
+                                  Behalten
+                                </button>
+                              </>
+                            ) : (
+                              <>
+                                <button onClick={() => handleApproveVacation(v.id)}
+                                  className="text-xs px-3 py-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white font-medium transition-colors">
+                                  ✓ Genehmigen
+                                </button>
+                                <button onClick={() => handleRejectVacation(v.id)}
+                                  className="text-xs px-3 py-1.5 rounded-lg bg-red-900/30 text-red-400 hover:bg-red-900/50 font-medium transition-colors">
+                                  ✕ Ablehnen
+                                </button>
+                              </>
+                            )}
                           </div>
                         </li>
-                      ))}
+                        );
+                      })}
                     </ul>
                   </div>
                 )}

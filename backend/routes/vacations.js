@@ -150,6 +150,25 @@ router.put('/:id', authenticate, (req, res) => {
   res.json(updated);
 });
 
+// Request deletion of an approved vacation
+router.put('/delete-request/:id', authenticate, (req, res) => {
+  const vacation = db.prepare('SELECT * FROM vacations WHERE id = ?').get(req.params.id);
+  if (!vacation) return res.status(404).json({ error: 'Urlaub nicht gefunden.' });
+  if (vacation.user_id !== req.user.id) return res.status(403).json({ error: 'Keine Berechtigung.' });
+  if (vacation.status !== 'approved') return res.status(400).json({ error: 'Nur genehmigte Urlaube können so gelöscht werden.' });
+  db.prepare('UPDATE vacations SET delete_requested = 1 WHERE id = ?').run(req.params.id);
+  res.json({ message: 'Löschantrag eingereicht.' });
+});
+
+// Cancel own delete request
+router.delete('/delete-request/:id', authenticate, (req, res) => {
+  const vacation = db.prepare('SELECT * FROM vacations WHERE id = ?').get(req.params.id);
+  if (!vacation) return res.status(404).json({ error: 'Urlaub nicht gefunden.' });
+  if (vacation.user_id !== req.user.id) return res.status(403).json({ error: 'Keine Berechtigung.' });
+  db.prepare('UPDATE vacations SET delete_requested = 0 WHERE id = ?').run(req.params.id);
+  res.json({ message: 'Löschantrag zurückgezogen.' });
+});
+
 // Change request for an APPROVED vacation (creates new pending entry that replaces original when approved)
 router.post('/change-request/:id', authenticate, (req, res) => {
   const { start_date, end_date, note } = req.body;
