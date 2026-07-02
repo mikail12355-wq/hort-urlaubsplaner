@@ -59,6 +59,15 @@ router.post('/', authenticate, (req, res) => {
   res.status(201).json(vacation);
 });
 
+router.put('/allowance', authenticate, (req, res) => {
+  const allowance = parseInt(req.body.allowance);
+  if (isNaN(allowance) || allowance < 0 || allowance > 365) {
+    return res.status(400).json({ error: 'Ungültige Anzahl (0–365).' });
+  }
+  db.prepare('UPDATE users SET vacation_allowance = ? WHERE id = ?').run(allowance, req.user.id);
+  res.json({ message: 'Urlaubstage aktualisiert.', allowance });
+});
+
 router.put('/:id', authenticate, (req, res) => {
   const { start_date, end_date, note } = req.body;
   const vacation = db.prepare('SELECT * FROM vacations WHERE id = ?').get(req.params.id);
@@ -96,15 +105,6 @@ router.delete('/:id', authenticate, (req, res) => {
 
   db.prepare('DELETE FROM vacations WHERE id = ?').run(req.params.id);
   res.json({ message: 'Urlaub gelöscht.' });
-});
-
-router.put('/allowance', authenticate, (req, res) => {
-  const allowance = parseInt(req.body.allowance);
-  if (isNaN(allowance) || allowance < 0 || allowance > 365) {
-    return res.status(400).json({ error: 'Ungültige Anzahl (0–365).' });
-  }
-  db.prepare('UPDATE users SET vacation_allowance = ? WHERE id = ?').run(allowance, req.user.id);
-  res.json({ message: 'Urlaubstage aktualisiert.', allowance });
 });
 
 router.get('/stats/:year', authenticate, (req, res) => {
