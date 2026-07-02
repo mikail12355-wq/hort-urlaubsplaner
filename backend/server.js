@@ -2,6 +2,7 @@ import express from 'express';
 import cors from 'cors';
 import authRoutes from './routes/auth.js';
 import vacationRoutes from './routes/vacations.js';
+import adminRoutes from './routes/admin.js';
 
 const app = express();
 const PORT = process.env.PORT || 3001;
@@ -28,6 +29,7 @@ app.use(express.json());
 
 app.use('/api/auth', authRoutes);
 app.use('/api/vacations', vacationRoutes);
+app.use('/api/admin', adminRoutes);
 
 app.listen(PORT, () => {
   console.log(`\n🏫 Hort-Urlaubsplaner Backend läuft auf http://localhost:${PORT}\n`);

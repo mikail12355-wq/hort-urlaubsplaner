@@ -4,6 +4,16 @@ import LoginForm from './components/LoginForm';
 import RegisterForm from './components/RegisterForm';
 import Calendar from './components/Calendar';
 import Header from './components/Header';
+import AdminLogin from './components/AdminLogin';
+import AdminPanel from './components/AdminPanel';
+
+const isAdminRoute = window.location.hash === '#/admin';
+
+function AdminApp() {
+  const [loggedIn, setLoggedIn] = useState(!!localStorage.getItem('admin_token'));
+  if (!loggedIn) return <AdminLogin onLogin={() => setLoggedIn(true)} />;
+  return <AdminPanel onLogout={() => setLoggedIn(false)} />;
+}
 
 function AppContent() {
   const { user } = useAuth();
@@ -39,6 +49,7 @@ function AppContent() {
 }
 
 export default function App() {
+  if (isAdminRoute) return <AdminApp />;
   return (
     <AuthProvider>
       <AppContent />
