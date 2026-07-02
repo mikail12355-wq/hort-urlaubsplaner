@@ -101,6 +101,8 @@ function ResetPasswordModal({ user, onClose, onDone }) {
   );
 }
 
+const THIS_YEAR = new Date().getFullYear();
+
 export default function AdminPanel({ onLogout }) {
   const [tab, setTab] = useState('users');
   const [users, setUsers] = useState([]);
@@ -108,6 +110,7 @@ export default function AdminPanel({ onLogout }) {
   const [loading, setLoading] = useState(false);
   const [resetModal, setResetModal] = useState(null);
   const [confirmDelete, setConfirmDelete] = useState(null);
+  const [carryoverYear, setCarryoverYear] = useState(THIS_YEAR);
 
   const fetchUsers = useCallback(async () => {
     try { setUsers(await adminApi.getUsers()); } catch {}
@@ -226,8 +229,17 @@ export default function AdminPanel({ onLogout }) {
                 <thead>
                   <tr className="border-b border-gray-700 text-gray-400 text-xs uppercase tracking-wide">
                     <th className="text-left px-5 py-3">Name</th>
-                    <th className="text-left px-5 py-3 hidden sm:table-cell">Urlaubs&shy;tage</th>
-                    <th className="text-left px-5 py-3 hidden sm:table-cell">Resturlaub</th>
+                    <th className="text-left px-5 py-3 hidden sm:table-cell">Standard / Jahr</th>
+                    <th className="text-left px-5 py-3 hidden sm:table-cell">
+                      <div className="flex items-center gap-1">
+                        <span>Übertrag</span>
+                        <div className="flex items-center gap-0.5 bg-gray-700 rounded-lg px-1.5 py-0.5 ml-1">
+                          <button onClick={() => setCarryoverYear(y => y - 1)} className="text-gray-400 hover:text-white text-xs">‹</button>
+                          <span className="text-xs text-white font-medium px-1">{carryoverYear}</span>
+                          <button onClick={() => setCarryoverYear(y => y + 1)} className="text-gray-400 hover:text-white text-xs">›</button>
+                        </div>
+                      </div>
+                    </th>
                     <th className="px-5 py-3"></th>
                   </tr>
                 </thead>
@@ -245,10 +257,10 @@ export default function AdminPanel({ onLogout }) {
                       </td>
                       <td className="px-5 py-3.5 hidden sm:table-cell">
                         <NumberEditor
-                          value={u.vacation_carryover ?? 0}
-                          label="➕"
+                          value={u[`carryover_${carryoverYear}`] ?? 0}
+                          label={`➕`}
                           color="emerald"
-                          onSave={async (v) => { await adminApi.updateCarryover(u.id, v); fetchUsers(); }}
+                          onSave={async (v) => { await adminApi.updateCarryover(u.id, v, carryoverYear); fetchUsers(); }}
                         />
                       </td>
                       <td className="px-5 py-3.5">

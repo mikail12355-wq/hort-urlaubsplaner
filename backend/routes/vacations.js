@@ -112,9 +112,10 @@ router.get('/stats/:year', authenticate, (req, res) => {
   const startOfYear = `${year}-01-01`;
   const endOfYear = `${year}-12-31`;
 
-  const user = db.prepare('SELECT vacation_allowance, vacation_carryover FROM users WHERE id = ?').get(req.user.id);
+  const user = db.prepare('SELECT vacation_allowance FROM users WHERE id = ?').get(req.user.id);
   const allowance = user?.vacation_allowance ?? 30;
-  const carryover = user?.vacation_carryover ?? 0;
+  const yearData = db.prepare('SELECT carryover FROM vacation_year_data WHERE user_id = ? AND year = ?').get(req.user.id, year);
+  const carryover = yearData?.carryover ?? 0;
   const totalAllowance = allowance + carryover;
 
   const vacations = db

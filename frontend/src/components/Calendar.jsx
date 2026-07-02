@@ -29,7 +29,7 @@ function colorFor(userId) {
   return USER_COLORS[userId % USER_COLORS.length];
 }
 
-function StatsCard({ stats, year, onAllowanceChange }) {
+function StatsCard({ stats, year, onYearChange, onAllowanceChange }) {
   const [editing, setEditing] = useState(false);
   const [value, setValue] = useState(stats.allowance);
   const [saving, setSaving] = useState(false);
@@ -55,12 +55,22 @@ function StatsCard({ stats, year, onAllowanceChange }) {
   const total = stats.total_allowance ?? stats.allowance;
   const pct = total > 0 ? Math.min(100, (stats.used_days / total) * 100) : 0;
   const barColor = stats.remaining_days < 0 ? 'bg-red-500' : stats.remaining_days <= 5 ? 'bg-amber-400' : 'bg-indigo-500';
-  const textColor = stats.remaining_days < 0 ? 'text-red-500' : stats.remaining_days <= 5 ? 'text-amber-600 font-semibold' : 'text-indigo-600 font-semibold';
+  const textColor = stats.remaining_days < 0 ? 'text-red-500' : stats.remaining_days <= 5 ? 'text-amber-600' : 'text-indigo-600';
 
   return (
     <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-5">
-      <div className="flex items-center justify-between mb-3">
-        <h3 className="font-semibold text-gray-700 text-sm">Meine Urlaubstage {year}</h3>
+      {/* Header row: title + year switcher + remaining */}
+      <div className="flex items-center justify-between mb-3 gap-2 flex-wrap">
+        <div className="flex items-center gap-2">
+          <h3 className="font-semibold text-gray-700 text-sm">Meine Urlaubstage</h3>
+          <div className="flex items-center gap-1 bg-gray-100 rounded-lg px-2 py-0.5">
+            <button onClick={() => onYearChange(year - 1)}
+              className="text-gray-400 hover:text-indigo-600 text-xs font-bold px-0.5 transition-colors">‹</button>
+            <span className="text-sm font-bold text-gray-700 min-w-[36px] text-center">{year}</span>
+            <button onClick={() => onYearChange(year + 1)}
+              className="text-gray-400 hover:text-indigo-600 text-xs font-bold px-0.5 transition-colors">›</button>
+          </div>
+        </div>
         <span className={`text-sm font-bold ${textColor}`}>
           {stats.remaining_days < 0
             ? `${Math.abs(stats.remaining_days)} Tage überzogen`
@@ -74,7 +84,7 @@ function StatsCard({ stats, year, onAllowanceChange }) {
 
       <div className="grid grid-cols-3 gap-2 text-center text-xs">
         <div className="bg-gray-50 rounded-xl p-2">
-          <div className="text-gray-400 mb-0.5">Jahresurlaub</div>
+          <div className="text-gray-400 mb-0.5">Standard / Jahr</div>
           <div className="flex items-center justify-center gap-1">
             {editing ? (
               <>
@@ -88,22 +98,24 @@ function StatsCard({ stats, year, onAllowanceChange }) {
             ) : (
               <button onClick={() => setEditing(true)}
                 className="font-bold text-gray-800 text-sm underline decoration-dotted hover:text-indigo-600"
-                title="Jahresurlaub anpassen">
+                title="Einmalig festlegen – gilt für alle Jahre">
                 {stats.allowance} Tage
               </button>
             )}
           </div>
         </div>
         <div className="bg-emerald-50 rounded-xl p-2">
-          <div className="text-emerald-600 mb-0.5">Resturlaub Vorjahr</div>
+          <div className="text-emerald-600 mb-0.5">Übertrag {year - 1}</div>
           <div className="font-bold text-emerald-700 text-sm">+{stats.carryover ?? 0} Tage</div>
         </div>
         <div className="bg-indigo-50 rounded-xl p-2">
-          <div className="text-indigo-500 mb-0.5">Genutzt</div>
-          <div className="font-bold text-indigo-700 text-sm">{stats.used_days} von {total}</div>
+          <div className="text-indigo-500 mb-0.5">Genutzt {year}</div>
+          <div className="font-bold text-indigo-700 text-sm">{stats.used_days} / {total}</div>
         </div>
       </div>
-      <p className="text-xs text-gray-400 text-right mt-2 italic">Klick auf Jahresurlaub zum Anpassen</p>
+      <p className="text-xs text-gray-400 mt-2 italic">
+        Klick auf die Tageszahl zum einmaligen Festlegen deines Jahres-Standards.
+      </p>
     </div>
   );
 }
@@ -204,7 +216,12 @@ export default function Calendar() {
     <div className="space-y-5">
       {/* Vacation stats card */}
       {stats && (
-        <StatsCard stats={stats} year={year} onAllowanceChange={fetchVacations} />
+        <StatsCard
+          stats={stats}
+          year={year}
+          onYearChange={(y) => { setYear(y); setMonth(0); }}
+          onAllowanceChange={fetchVacations}
+        />
       )}
 
       {/* Controls */}

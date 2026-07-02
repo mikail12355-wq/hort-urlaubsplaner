@@ -38,9 +38,24 @@ router.post('/login', (req, res) => {
 
 router.get('/users', authenticateAdmin, (req, res) => {
   const users = db
-    .prepare('SELECT id, first_name, last_name, vacation_allowance, vacation_carryover, is_approved, created_at FROM users ORDER BY is_approved ASC, last_name, first_name')
+    .prepare('SELECT id, first_name, last_name, vacation_allowance, is_approved, created_at FROM users ORDER BY is_approved ASC, last_name, first_name')
     .all();
-  res.json(users);
+
+  const yearData = db.prepare('SELECT user_id, year, carryover FROM vacation_year_data').all();
+  const carryoverMap = {};
+  yearData.forEach(({ user_id, year, carryover }) => {
+    carryoverMap[`${user_id}_${year}`] = carryover;
+  });
+
+  const usersWithCarryover = users.map((u) => {
+    const extra = {};
+    yearData.filter(r => r.user_id === u.id).forEach(r => {
+      extra[`carryover_${r.year}`] = r.carryover;
+    });
+    return { ...u, ...extra };
+  });
+
+  res.json(usersWithCarryover);
 });
 
 router.put('/users/approve-all', authenticateAdmin, (req, res) => {
@@ -56,12 +71,18 @@ router.put('/users/:id/approve', authenticateAdmin, (req, res) => {
 
 router.put('/users/:id/carryover', authenticateAdmin, (req, res) => {
   const carryover = parseInt(req.body.carryover);
+  const year = parseInt(req.body.year) || new Date().getFullYear();
   if (isNaN(carryover) || carryover < 0 || carryover > 365) {
     return res.status(400).json({ error: 'Ungültige Anzahl (0–365).' });
   }
-  const result = db.prepare('UPDATE users SET vacation_carryover = ? WHERE id = ?').run(carryover, req.params.id);
-  if (result.changes === 0) return res.status(404).json({ error: 'Benutzer nicht gefunden.' });
-  res.json({ message: 'Resturlaub aktualisiert.' });
+  const userExists = db.prepare('SELECT 1 FROM users WHERE id = ?').get(req.params.id);
+  if (!userExists) return res.status(404).json({ error: 'Benutzer nicht gefunden.' });
+  db.prepare(`
+    INSERT INTO vacation_year_data (user_id, year, carryover)
+    VALUES (?, ?, ?)
+    ON CONFLICT(user_id, year) DO UPDATE SET carryover = excluded.carryover
+  `).run(req.params.id, year, carryover);
+  res.json({ message: 'Resturlaub aktualisiert.', year, carryover });
 });
 
 router.put('/users/:id/allowance', authenticateAdmin, (req, res) => {

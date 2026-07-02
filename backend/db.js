@@ -29,6 +29,14 @@ db.exec(`
     FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
   );
 
+  CREATE TABLE IF NOT EXISTS vacation_year_data (
+    user_id INTEGER NOT NULL,
+    year INTEGER NOT NULL,
+    carryover INTEGER NOT NULL DEFAULT 0,
+    PRIMARY KEY (user_id, year),
+    FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+  );
+
   CREATE TABLE IF NOT EXISTS migrations (
     name TEXT PRIMARY KEY
   );
@@ -38,8 +46,6 @@ try { db.exec('ALTER TABLE users ADD COLUMN vacation_allowance INTEGER NOT NULL 
 try { db.exec('ALTER TABLE users ADD COLUMN is_approved INTEGER NOT NULL DEFAULT 1'); } catch {}
 try { db.exec('ALTER TABLE users ADD COLUMN vacation_carryover INTEGER NOT NULL DEFAULT 0'); } catch {}
 
-// One-time migration: approve all users that existed before the approval feature.
-// Uses a migrations table so this never runs again after the first time.
 const alreadyApproved = db.prepare("SELECT 1 FROM migrations WHERE name = 'approve_existing_users'").get();
 if (!alreadyApproved) {
   db.exec('UPDATE users SET is_approved = 1');
