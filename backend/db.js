@@ -30,4 +30,11 @@ db.exec(`
   );
 `);
 
+// Migration: add vacation_allowance if not yet present
+try {
+  db.exec('ALTER TABLE users ADD COLUMN vacation_allowance INTEGER NOT NULL DEFAULT 30');
+} catch {
+  // Column already exists
+}
+
 export default db;

@@ -58,14 +58,19 @@ export default function Calendar() {
   const [year, setYear] = useState(now.getFullYear());
   const [month, setMonth] = useState(now.getMonth());
   const [vacations, setVacations] = useState([]);
+  const [stats, setStats] = useState(null);
   const [loading, setLoading] = useState(false);
   const [modal, setModal] = useState(null);
 
   const fetchVacations = useCallback(async () => {
     setLoading(true);
     try {
-      const data = await api.getVacations(year, month + 1);
+      const [data, statsData] = await Promise.all([
+        api.getVacations(year, month + 1),
+        api.getStats(year),
+      ]);
       setVacations(data);
+      setStats(statsData);
     } catch (e) {
       console.error(e);
     } finally {
@@ -118,6 +123,38 @@ export default function Calendar() {
 
   return (
     <div className="space-y-5">
+      {/* Vacation stats card */}
+      {stats && (
+        <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-5">
+          <div className="flex items-center justify-between mb-3">
+            <h3 className="font-semibold text-gray-700 text-sm">Meine Urlaubstage {year}</h3>
+            <span className="text-sm text-gray-500">
+              <span className="font-semibold text-gray-800">{stats.used_days}</span> von {stats.allowance} Tagen genutzt
+            </span>
+          </div>
+          <div className="h-2.5 bg-gray-100 rounded-full overflow-hidden">
+            <div
+              className={`h-full rounded-full transition-all duration-500 ${
+                stats.remaining_days < 0 ? 'bg-red-500' :
+                stats.remaining_days <= 5 ? 'bg-amber-400' : 'bg-indigo-500'
+              }`}
+              style={{ width: `${Math.min(100, stats.allowance > 0 ? (stats.used_days / stats.allowance) * 100 : 0)}%` }}
+            />
+          </div>
+          <div className="flex justify-between mt-2">
+            <span className={`text-xs font-medium ${
+              stats.remaining_days < 0 ? 'text-red-500' :
+              stats.remaining_days <= 5 ? 'text-amber-500' : 'text-indigo-500'
+            }`}>
+              {stats.remaining_days < 0
+                ? `${Math.abs(stats.remaining_days)} Tage überzogen`
+                : `${stats.remaining_days} Tage übrig`}
+            </span>
+            <span className="text-xs text-gray-400">{stats.allowance} Tage gesamt</span>
+          </div>
+        </div>
+      )}
+
       {/* Controls */}
       <div className="flex items-center gap-3 flex-wrap">
         <button
@@ -273,8 +310,16 @@ export default function Calendar() {
                     {v.start_date !== v.end_date && ` – ${formatDE(v.end_date)}`}
                   </span>
                   {v.note && (
-                    <span className="text-xs text-gray-400 italic hidden sm:block truncate max-w-[160px]">
+                    <span className="text-xs text-gray-400 italic hidden sm:block truncate max-w-[120px]">
                       „{v.note}"
+                    </span>
+                  )}
+                  {isOwn && stats && (
+                    <span className="text-xs text-gray-400 flex-shrink-0 hidden sm:block">
+                      {(() => {
+                        const entry = stats.entries?.find(e => e.id === v.id);
+                        return entry ? `${entry.working_days} AT` : '';
+                      })()}
                     </span>
                   )}
                   {isOwn && (
@@ -305,6 +350,7 @@ export default function Calendar() {
           onClose={() => setModal(null)}
           onSave={afterSave}
           onDelete={afterSave}
+          stats={stats}
         />
       )}
     </div>

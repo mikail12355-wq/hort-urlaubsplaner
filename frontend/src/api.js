@@ -19,6 +19,7 @@ export const api = {
   register: (body) => req('/auth/register', { method: 'POST', body: JSON.stringify(body) }),
   login: (body) => req('/auth/login', { method: 'POST', body: JSON.stringify(body) }),
   getVacations: (year, month) => req(`/vacations/month/${year}/${month}`),
+  getStats: (year) => req(`/vacations/stats/${year}`),
   addVacation: (body) => req('/vacations', { method: 'POST', body: JSON.stringify(body) }),
   updateVacation: (id, body) => req(`/vacations/${id}`, { method: 'PUT', body: JSON.stringify(body) }),
   deleteVacation: (id) => req(`/vacations/${id}`, { method: 'DELETE' }),
@@ -45,4 +46,5 @@ export const adminApi = {
   deleteUser: (id) => adminReq(`/users/${id}`, { method: 'DELETE' }),
   getVacations: () => adminReq('/vacations'),
   deleteVacation: (id) => adminReq(`/vacations/${id}`, { method: 'DELETE' }),
+  updateAllowance: (id, allowance) => adminReq(`/users/${id}/allowance`, { method: 'PUT', body: JSON.stringify({ allowance }) }),
 };

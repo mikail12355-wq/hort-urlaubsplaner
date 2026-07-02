@@ -1,9 +1,63 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { adminApi } from '../api';
 
 function formatDE(dateStr) {
   const [y, m, d] = dateStr.split('-').map(Number);
   return `${d}.${m}.${y}`;
+}
+
+function AllowanceEditor({ user, onSaved }) {
+  const [editing, setEditing] = useState(false);
+  const [value, setValue] = useState(user.vacation_allowance ?? 30);
+  const [saving, setSaving] = useState(false);
+  const inputRef = useRef(null);
+
+  useEffect(() => { if (editing) inputRef.current?.focus(); }, [editing]);
+
+  const save = async () => {
+    setSaving(true);
+    try {
+      await adminApi.updateAllowance(user.id, value);
+      setEditing(false);
+      onSaved();
+    } catch (e) {
+      alert(e.message);
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  if (!editing) return (
+    <button
+      onClick={() => setEditing(true)}
+      className="text-xs px-3 py-1.5 rounded-lg bg-emerald-900/20 text-emerald-400 hover:bg-emerald-900/40 transition-colors font-medium"
+      title="Urlaubstage anpassen">
+      🌴 {user.vacation_allowance ?? 30} Tage
+    </button>
+  );
+
+  return (
+    <div className="flex items-center gap-1">
+      <input
+        ref={inputRef}
+        type="number"
+        value={value}
+        min={0} max={365}
+        onChange={(e) => setValue(Number(e.target.value))}
+        onKeyDown={(e) => { if (e.key === 'Enter') save(); if (e.key === 'Escape') setEditing(false); }}
+        className="w-16 bg-gray-700 border border-gray-500 rounded-lg px-2 py-1 text-xs text-white text-center focus:outline-none focus:ring-1 focus:ring-emerald-500"
+      />
+      <span className="text-xs text-gray-400">Tage</span>
+      <button onClick={save} disabled={saving}
+        className="text-xs px-2 py-1 rounded-lg bg-emerald-600 text-white hover:bg-emerald-700 disabled:opacity-60">
+        ✓
+      </button>
+      <button onClick={() => setEditing(false)}
+        className="text-xs px-2 py-1 rounded-lg bg-gray-700 text-gray-400 hover:bg-gray-600">
+        ✕
+      </button>
+    </div>
+  );
 }
 
 function ResetPasswordModal({ user, onClose, onDone }) {
@@ -175,6 +229,7 @@ export default function AdminPanel({ onLogout }) {
                       </td>
                       <td className="px-5 py-3.5">
                         <div className="flex gap-2 justify-end">
+                          <AllowanceEditor user={u} onSaved={fetchUsers} />
                           <button
                             onClick={() => setResetModal(u)}
                             className="text-xs px-3 py-1.5 rounded-lg bg-indigo-600/20 text-indigo-400 hover:bg-indigo-600/40 transition-colors font-medium">

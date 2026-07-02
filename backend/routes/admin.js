@@ -38,9 +38,19 @@ router.post('/login', (req, res) => {
 
 router.get('/users', authenticateAdmin, (req, res) => {
   const users = db
-    .prepare('SELECT id, first_name, last_name, created_at FROM users ORDER BY last_name, first_name')
+    .prepare('SELECT id, first_name, last_name, vacation_allowance, created_at FROM users ORDER BY last_name, first_name')
     .all();
   res.json(users);
+});
+
+router.put('/users/:id/allowance', authenticateAdmin, (req, res) => {
+  const allowance = parseInt(req.body.allowance);
+  if (isNaN(allowance) || allowance < 0 || allowance > 365) {
+    return res.status(400).json({ error: 'Ungültige Anzahl (0–365).' });
+  }
+  const result = db.prepare('UPDATE users SET vacation_allowance = ? WHERE id = ?').run(allowance, req.params.id);
+  if (result.changes === 0) return res.status(404).json({ error: 'Benutzer nicht gefunden.' });
+  res.json({ message: 'Urlaubstage aktualisiert.' });
 });
 
 router.put('/users/:id/password', authenticateAdmin, async (req, res) => {

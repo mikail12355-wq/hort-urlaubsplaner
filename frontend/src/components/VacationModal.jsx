@@ -1,7 +1,19 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { api } from '../api';
 
-export default function VacationModal({ modal, onClose, onSave, onDelete }) {
+function countWorkingDays(startStr, endStr) {
+  if (!startStr || !endStr || startStr > endStr) return 0;
+  const [sy, sm, sd] = startStr.split('-').map(Number);
+  const [ey, em, ed] = endStr.split('-').map(Number);
+  let count = 0;
+  for (let d = new Date(sy, sm - 1, sd); d <= new Date(ey, em - 1, ed); d.setDate(d.getDate() + 1)) {
+    const day = d.getDay();
+    if (day !== 0 && day !== 6) count++;
+  }
+  return count;
+}
+
+export default function VacationModal({ modal, onClose, onSave, onDelete, stats }) {
   const isEdit = modal.mode === 'edit';
   const [form, setForm] = useState({
     start_date: isEdit ? modal.vacation.start_date : (modal.date ?? ''),
@@ -19,6 +31,19 @@ export default function VacationModal({ modal, onClose, onSave, onDelete }) {
   }, [onClose]);
 
   const set = (key) => (e) => setForm((f) => ({ ...f, [key]: e.target.value }));
+
+  const workingDays = useMemo(
+    () => countWorkingDays(form.start_date, form.end_date),
+    [form.start_date, form.end_date]
+  );
+
+  // Days remaining after this entry (subtract current edit's days first)
+  const currentEditDays = isEdit
+    ? countWorkingDays(modal.vacation.start_date, modal.vacation.end_date)
+    : 0;
+  const remainingAfter = stats
+    ? stats.remaining_days + currentEditDays - workingDays
+    : null;
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -99,6 +124,26 @@ export default function VacationModal({ modal, onClose, onSave, onDelete }) {
                 />
               </div>
             </div>
+
+            {/* Working days preview */}
+            {workingDays > 0 && (
+              <div className={`rounded-xl px-4 py-3 text-sm flex items-center justify-between ${
+                remainingAfter !== null && remainingAfter < 0
+                  ? 'bg-red-50 border border-red-100'
+                  : 'bg-indigo-50 border border-indigo-100'
+              }`}>
+                <span className={remainingAfter !== null && remainingAfter < 0 ? 'text-red-600' : 'text-indigo-700'}>
+                  <span className="font-semibold">{workingDays} Arbeitstag{workingDays !== 1 ? 'e' : ''}</span>
+                  <span className="text-xs ml-1">(ohne Wochenenden)</span>
+                </span>
+                {remainingAfter !== null && (
+                  <span className={`text-xs font-medium ${remainingAfter < 0 ? 'text-red-500' : 'text-indigo-500'}`}>
+                    → noch {remainingAfter} übrig
+                  </span>
+                )}
+              </div>
+            )}
+
             <div>
               <label className="block text-xs font-medium text-gray-500 mb-1.5 uppercase tracking-wide">
                 Notiz <span className="normal-case font-normal">(optional)</span>
