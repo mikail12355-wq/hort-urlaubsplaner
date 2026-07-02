@@ -20,6 +20,7 @@ export const api = {
   login: (body) => req('/auth/login', { method: 'POST', body: JSON.stringify(body) }),
   getVacations: (year, month) => req(`/vacations/month/${year}/${month}`),
   getStats: (year) => req(`/vacations/stats/${year}`),
+  updateAllowance: (allowance) => req('/vacations/allowance', { method: 'PUT', body: JSON.stringify({ allowance }) }),
   addVacation: (body) => req('/vacations', { method: 'POST', body: JSON.stringify(body) }),
   updateVacation: (id, body) => req(`/vacations/${id}`, { method: 'PUT', body: JSON.stringify(body) }),
   deleteVacation: (id) => req(`/vacations/${id}`, { method: 'DELETE' }),

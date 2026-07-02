@@ -98,6 +98,15 @@ router.delete('/:id', authenticate, (req, res) => {
   res.json({ message: 'Urlaub gelöscht.' });
 });
 
+router.put('/allowance', authenticate, (req, res) => {
+  const allowance = parseInt(req.body.allowance);
+  if (isNaN(allowance) || allowance < 0 || allowance > 365) {
+    return res.status(400).json({ error: 'Ungültige Anzahl (0–365).' });
+  }
+  db.prepare('UPDATE users SET vacation_allowance = ? WHERE id = ?').run(allowance, req.user.id);
+  res.json({ message: 'Urlaubstage aktualisiert.', allowance });
+});
+
 router.get('/stats/:year', authenticate, (req, res) => {
   const year = parseInt(req.params.year);
   const startOfYear = `${year}-01-01`;

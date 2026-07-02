@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { api } from '../api';
 import { useAuth } from '../context/AuthContext';
 import VacationModal from './VacationModal';
@@ -27,6 +27,85 @@ const USER_COLORS = [
 
 function colorFor(userId) {
   return USER_COLORS[userId % USER_COLORS.length];
+}
+
+function StatsCard({ stats, year, onAllowanceChange }) {
+  const [editing, setEditing] = useState(false);
+  const [value, setValue] = useState(stats.allowance);
+  const [saving, setSaving] = useState(false);
+  const inputRef = useRef(null);
+
+  useEffect(() => { setValue(stats.allowance); }, [stats.allowance]);
+  useEffect(() => { if (editing) inputRef.current?.select(); }, [editing]);
+
+  const save = async () => {
+    if (value === stats.allowance) return setEditing(false);
+    setSaving(true);
+    try {
+      await api.updateAllowance(value);
+      setEditing(false);
+      onAllowanceChange();
+    } catch (e) {
+      alert(e.message);
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const pct = stats.allowance > 0 ? Math.min(100, (stats.used_days / stats.allowance) * 100) : 0;
+  const barColor = stats.remaining_days < 0 ? 'bg-red-500' : stats.remaining_days <= 5 ? 'bg-amber-400' : 'bg-indigo-500';
+  const textColor = stats.remaining_days < 0 ? 'text-red-500' : stats.remaining_days <= 5 ? 'text-amber-500' : 'text-indigo-500';
+
+  return (
+    <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-5">
+      <div className="flex items-center justify-between mb-3">
+        <h3 className="font-semibold text-gray-700 text-sm">Meine Urlaubstage {year}</h3>
+        <span className="text-sm text-gray-500">
+          <span className="font-semibold text-gray-800">{stats.used_days}</span> von{' '}
+          {editing ? (
+            <span className="inline-flex items-center gap-1 ml-1">
+              <input
+                ref={inputRef}
+                type="number"
+                value={value}
+                min={0} max={365}
+                onChange={(e) => setValue(Number(e.target.value))}
+                onKeyDown={(e) => { if (e.key === 'Enter') save(); if (e.key === 'Escape') setEditing(false); }}
+                className="w-14 border border-indigo-300 rounded-lg px-2 py-0.5 text-sm text-center focus:outline-none focus:ring-2 focus:ring-indigo-300"
+              />
+              <button onClick={save} disabled={saving}
+                className="text-xs bg-indigo-600 text-white px-2 py-0.5 rounded-lg hover:bg-indigo-700 disabled:opacity-60">
+                ✓
+              </button>
+              <button onClick={() => setEditing(false)}
+                className="text-xs text-gray-400 hover:text-gray-600">
+                ✕
+              </button>
+            </span>
+          ) : (
+            <button
+              onClick={() => setEditing(true)}
+              className="font-medium text-gray-700 underline decoration-dotted hover:text-indigo-600 transition-colors ml-1"
+              title="Eigene Urlaubstage anpassen"
+            >
+              {stats.allowance} Tagen
+            </button>
+          )}
+        </span>
+      </div>
+      <div className="h-2.5 bg-gray-100 rounded-full overflow-hidden">
+        <div className={`h-full rounded-full transition-all duration-500 ${barColor}`} style={{ width: `${pct}%` }} />
+      </div>
+      <div className="flex justify-between mt-2">
+        <span className={`text-xs font-medium ${textColor}`}>
+          {stats.remaining_days < 0
+            ? `${Math.abs(stats.remaining_days)} Tage überzogen`
+            : `${stats.remaining_days} Tage übrig`}
+        </span>
+        <span className="text-xs text-gray-400 italic">Klick auf Tageszahl zum Anpassen</span>
+      </div>
+    </div>
+  );
 }
 
 function localDate(dateStr) {
@@ -125,34 +204,7 @@ export default function Calendar() {
     <div className="space-y-5">
       {/* Vacation stats card */}
       {stats && (
-        <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-5">
-          <div className="flex items-center justify-between mb-3">
-            <h3 className="font-semibold text-gray-700 text-sm">Meine Urlaubstage {year}</h3>
-            <span className="text-sm text-gray-500">
-              <span className="font-semibold text-gray-800">{stats.used_days}</span> von {stats.allowance} Tagen genutzt
-            </span>
-          </div>
-          <div className="h-2.5 bg-gray-100 rounded-full overflow-hidden">
-            <div
-              className={`h-full rounded-full transition-all duration-500 ${
-                stats.remaining_days < 0 ? 'bg-red-500' :
-                stats.remaining_days <= 5 ? 'bg-amber-400' : 'bg-indigo-500'
-              }`}
-              style={{ width: `${Math.min(100, stats.allowance > 0 ? (stats.used_days / stats.allowance) * 100 : 0)}%` }}
-            />
-          </div>
-          <div className="flex justify-between mt-2">
-            <span className={`text-xs font-medium ${
-              stats.remaining_days < 0 ? 'text-red-500' :
-              stats.remaining_days <= 5 ? 'text-amber-500' : 'text-indigo-500'
-            }`}>
-              {stats.remaining_days < 0
-                ? `${Math.abs(stats.remaining_days)} Tage überzogen`
-                : `${stats.remaining_days} Tage übrig`}
-            </span>
-            <span className="text-xs text-gray-400">{stats.allowance} Tage gesamt</span>
-          </div>
-        </div>
+        <StatsCard stats={stats} year={year} onAllowanceChange={fetchVacations} />
       )}
 
       {/* Controls */}
