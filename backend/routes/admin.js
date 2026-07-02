@@ -43,6 +43,11 @@ router.get('/users', authenticateAdmin, (req, res) => {
   res.json(users);
 });
 
+router.put('/users/approve-all', authenticateAdmin, (req, res) => {
+  db.prepare('UPDATE users SET is_approved = 1 WHERE is_approved = 0').run();
+  res.json({ message: 'Alle Konten freigegeben.' });
+});
+
 router.put('/users/:id/approve', authenticateAdmin, (req, res) => {
   const result = db.prepare('UPDATE users SET is_approved = 1 WHERE id = ?').run(req.params.id);
   if (result.changes === 0) return res.status(404).json({ error: 'Benutzer nicht gefunden.' });

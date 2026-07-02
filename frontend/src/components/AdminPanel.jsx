@@ -163,11 +163,20 @@ export default function AdminPanel({ onLogout }) {
         {/* Pending approvals */}
         {pending.length > 0 && (
           <div className="bg-amber-900/30 border border-amber-700/50 rounded-2xl overflow-hidden">
-            <div className="px-5 py-3 border-b border-amber-700/30 flex items-center gap-2">
-              <span className="w-2 h-2 rounded-full bg-amber-400 animate-pulse" />
-              <h3 className="font-semibold text-amber-300 text-sm">
-                {pending.length} Konto{pending.length > 1 ? 's' : ''} wartet auf Freigabe
-              </h3>
+            <div className="px-5 py-3 border-b border-amber-700/30 flex items-center justify-between gap-2">
+              <div className="flex items-center gap-2">
+                <span className="w-2 h-2 rounded-full bg-amber-400 animate-pulse" />
+                <h3 className="font-semibold text-amber-300 text-sm">
+                  {pending.length} Konto{pending.length > 1 ? 's' : ''} wartet auf Freigabe
+                </h3>
+              </div>
+              {pending.length > 1 && (
+                <button
+                  onClick={async () => { await adminApi.approveAll(); fetchUsers(); }}
+                  className="text-xs px-3 py-1.5 rounded-lg bg-amber-500/30 text-amber-300 hover:bg-amber-500/50 transition-colors font-medium">
+                  Alle freigeben
+                </button>
+              )}
             </div>
             <ul className="divide-y divide-amber-700/20">
               {pending.map((u) => (
