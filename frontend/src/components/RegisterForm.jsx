@@ -31,17 +31,24 @@ export default function RegisterForm({ onSwitch }) {
   if (pending) {
     return (
       <div className="bg-white rounded-2xl shadow-lg p-8 text-center">
-        <div className="text-5xl mb-4">⏳</div>
-        <h2 className="text-xl font-semibold text-gray-800 mb-2">Konto erstellt!</h2>
-        <p className="text-gray-500 text-sm leading-relaxed">
-          Dein Konto wartet auf Freigabe durch den Admin.<br />
-          Du wirst benachrichtigt, sobald dein Zugang aktiviert wurde.
+        <div className="text-5xl mb-4">✅</div>
+        <h2 className="text-xl font-bold text-gray-800 mb-3">Registrierung erfolgreich!</h2>
+        <div className="bg-amber-50 border border-amber-200 rounded-xl px-5 py-4 mb-5 text-left">
+          <p className="text-amber-800 text-sm font-semibold mb-1">⏳ Warte auf Admin-Freigabe</p>
+          <p className="text-amber-700 text-sm leading-relaxed">
+            Dein Konto wurde erstellt, muss aber erst vom Admin freigeschaltet werden.
+            Erst danach kannst du dich einloggen.
+          </p>
+        </div>
+        <p className="text-gray-400 text-xs mb-5">
+          Bitte wende dich direkt an den Admin und teile ihm mit,<br />
+          dass du einen Account unter <span className="font-medium text-gray-600">{form.first_name} {form.last_name}</span> erstellt hast.
         </p>
         <button
           onClick={onSwitch}
-          className="mt-6 text-sm text-indigo-600 hover:text-indigo-700 font-medium"
+          className="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-medium py-2.5 rounded-xl transition-colors text-sm"
         >
-          Zurück zur Anmeldung
+          Zur Anmeldung
         </button>
       </div>
     );
