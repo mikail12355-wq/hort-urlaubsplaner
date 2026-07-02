@@ -54,7 +54,9 @@ export default function VacationModal({ modal, onClose, onSave, onDelete, stats 
     }
     setLoading(true);
     try {
-      if (isEdit) {
+      if (isEdit && changeMode) {
+        await api.requestVacationChange(modal.vacation.id, form);
+      } else if (isEdit) {
         await api.updateVacation(modal.vacation.id, form);
       } else {
         await api.addVacation(form);
@@ -70,6 +72,7 @@ export default function VacationModal({ modal, onClose, onSave, onDelete, stats 
   const status = isEdit ? (modal.vacation.status ?? (modal.vacation.is_approved ? 'approved' : 'pending')) : 'pending';
   const isApproved = status === 'approved';
   const isRejected = status === 'rejected';
+  const [changeMode, setChangeMode] = useState(false); // for approved: show edit form
 
   const handleDelete = async () => {
     if (!confirmDelete) return setConfirmDelete(true);
@@ -97,6 +100,7 @@ export default function VacationModal({ modal, onClose, onSave, onDelete, stats 
             <h3 className="text-lg font-semibold text-gray-800">
               {isEdit
                 ? isRejected ? '✕ Urlaubsantrag abgelehnt'
+                : isApproved && changeMode ? '✏️ Änderung beantragen'
                 : isApproved ? '✅ Genehmigter Urlaub'
                 : '⏳ Urlaub bearbeiten'
                 : '+ Urlaub eintragen'}
@@ -110,7 +114,8 @@ export default function VacationModal({ modal, onClose, onSave, onDelete, stats 
           </div>
 
           <form onSubmit={handleSubmit} className="space-y-4">
-            <div className="grid grid-cols-2 gap-3">
+            {/* Hide form fields for approved vacation when not in change mode */}
+            <div className={`grid grid-cols-2 gap-3 ${isApproved && !changeMode ? 'opacity-50 pointer-events-none' : ''}`}>
               <div>
                 <label className="block text-xs font-medium text-gray-500 mb-1.5 uppercase tracking-wide">Von</label>
                 <input
@@ -170,12 +175,21 @@ export default function VacationModal({ modal, onClose, onSave, onDelete, stats 
             {isRejected && (
               <div className="bg-red-50 border border-red-200 text-red-700 text-sm rounded-xl px-4 py-3">
                 <p className="font-semibold mb-1">Dein Urlaubsantrag wurde abgelehnt.</p>
-                <p className="text-red-600 text-xs">Du kannst diesen Eintrag entfernen und ggf. einen neuen Antrag stellen.</p>
+                <p className="text-red-600 text-xs">Passe die Daten an und stelle den Antrag erneut.</p>
               </div>
             )}
-            {isApproved && (
-              <div className="bg-blue-50 border border-blue-100 text-blue-700 text-sm rounded-xl px-4 py-3">
-                Dieser Urlaub wurde bereits genehmigt und kann nicht mehr bearbeitet werden. Für Änderungen bitte den Admin kontaktieren.
+            {isApproved && !changeMode && (
+              <div className="bg-blue-50 border border-blue-100 text-blue-700 text-sm rounded-xl px-4 py-3 flex items-center justify-between gap-3">
+                <span className="text-sm">Genehmigt — Änderung nötig?</span>
+                <button onClick={() => setChangeMode(true)}
+                  className="text-xs bg-blue-600 hover:bg-blue-700 text-white px-3 py-1.5 rounded-lg font-medium transition-colors whitespace-nowrap">
+                  Änderung beantragen
+                </button>
+              </div>
+            )}
+            {isApproved && changeMode && (
+              <div className="bg-amber-50 border border-amber-200 text-amber-700 text-xs rounded-xl px-3 py-2">
+                Das Original bleibt genehmigt bis der Admin die Änderung freigibt.
               </div>
             )}
 
@@ -186,7 +200,7 @@ export default function VacationModal({ modal, onClose, onSave, onDelete, stats 
             )}
 
             <div className="flex gap-2 pt-1">
-              {isEdit && (isRejected || !isApproved) && (
+              {isEdit && (isRejected || !isApproved) && !isApproved && (
                 <button
                   type="button"
                   onClick={handleDelete}
@@ -207,13 +221,22 @@ export default function VacationModal({ modal, onClose, onSave, onDelete, stats 
               >
                 Abbrechen
               </button>
-              {!isApproved && !isRejected && (
+              {(!isApproved || changeMode) && !isRejected && (
                 <button
                   type="submit"
                   disabled={loading}
                   className="flex-1 bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-medium py-2.5 rounded-xl transition-colors disabled:opacity-60"
                 >
-                  {loading ? '...' : isEdit ? 'Speichern' : 'Beantragen'}
+                  {loading ? '...' : changeMode ? 'Änderung einreichen' : isEdit ? 'Erneut beantragen' : 'Beantragen'}
+                </button>
+              )}
+              {isRejected && (
+                <button
+                  type="submit"
+                  disabled={loading}
+                  className="flex-1 bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-medium py-2.5 rounded-xl transition-colors disabled:opacity-60"
+                >
+                  {loading ? '...' : 'Erneut beantragen'}
                 </button>
               )}
             </div>

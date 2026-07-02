@@ -268,6 +268,7 @@ export default function AdminPanel({ onLogout }) {
                             <p className="text-xs text-gray-400">
                               {formatDE(v.start_date)} – {formatDE(v.end_date)}
                               {v.note && <span className="italic ml-2 text-gray-500">„{v.note}"</span>}
+                              {v.replaces_id && <span className="ml-2 text-amber-400 font-medium">Änderungsantrag</span>}
                             </p>
                           </div>
                           <div className="flex gap-2">

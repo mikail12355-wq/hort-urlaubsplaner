@@ -149,10 +149,16 @@ router.get('/pending', authenticateAdmin, (req, res) => {
   res.json({ vacations, changes });
 });
 
-// Approve a pending vacation
+// Approve a pending vacation (if it's a change request, delete the original)
 router.put('/vacations/:id/approve', authenticateAdmin, (req, res) => {
-  const result = db.prepare("UPDATE vacations SET is_approved = 1, status = 'approved' WHERE id = ? AND status = 'pending'").run(req.params.id);
-  if (result.changes === 0) return res.status(404).json({ error: 'Urlaub nicht gefunden oder bereits genehmigt.' });
+  const vacation = db.prepare('SELECT * FROM vacations WHERE id = ?').get(req.params.id);
+  if (!vacation || vacation.status !== 'pending') {
+    return res.status(404).json({ error: 'Urlaub nicht gefunden oder bereits genehmigt.' });
+  }
+  if (vacation.replaces_id) {
+    db.prepare('DELETE FROM vacations WHERE id = ?').run(vacation.replaces_id);
+  }
+  db.prepare("UPDATE vacations SET is_approved = 1, status = 'approved' WHERE id = ?").run(req.params.id);
   res.json({ message: 'Urlaub genehmigt.' });
 });
 

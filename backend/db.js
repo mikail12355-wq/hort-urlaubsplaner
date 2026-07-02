@@ -58,6 +58,7 @@ try { db.exec('ALTER TABLE users ADD COLUMN is_approved INTEGER NOT NULL DEFAULT
 try { db.exec('ALTER TABLE users ADD COLUMN vacation_carryover INTEGER NOT NULL DEFAULT 0'); } catch {}
 try { db.exec('ALTER TABLE vacations ADD COLUMN is_approved INTEGER NOT NULL DEFAULT 0'); } catch {}
 try { db.exec("ALTER TABLE vacations ADD COLUMN status TEXT NOT NULL DEFAULT 'pending'"); } catch {}
+try { db.exec('ALTER TABLE vacations ADD COLUMN replaces_id INTEGER'); } catch {}
 
 // Approve all existing vacations (added before approval workflow)
 const vacMigDone = db.prepare("SELECT 1 FROM migrations WHERE name = 'approve_existing_vacations'").get();

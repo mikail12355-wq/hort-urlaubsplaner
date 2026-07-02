@@ -24,6 +24,7 @@ export const api = {
   updateCarryover: (carryover, year) => req('/vacations/carryover', { method: 'PUT', body: JSON.stringify({ carryover, year }) }),
   addVacation: (body) => req('/vacations', { method: 'POST', body: JSON.stringify(body) }),
   updateVacation: (id, body) => req(`/vacations/${id}`, { method: 'PUT', body: JSON.stringify(body) }),
+  requestVacationChange: (id, body) => req(`/vacations/change-request/${id}`, { method: 'POST', body: JSON.stringify(body) }),
   deleteVacation: (id) => req(`/vacations/${id}`, { method: 'DELETE' }),
 };
 

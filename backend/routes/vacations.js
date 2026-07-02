@@ -132,23 +132,47 @@ router.post('/', authenticate, (req, res) => {
   res.status(201).json(vacation);
 });
 
-// Edit own PENDING vacation only
+// Edit own PENDING or REJECTED vacation (rejected → back to pending)
 router.put('/:id', authenticate, (req, res) => {
   const { start_date, end_date, note } = req.body;
   const vacation = db.prepare('SELECT * FROM vacations WHERE id = ?').get(req.params.id);
   if (!vacation) return res.status(404).json({ error: 'Urlaub nicht gefunden.' });
   if (vacation.user_id !== req.user.id) return res.status(403).json({ error: 'Keine Berechtigung.' });
-  if (vacation.status !== 'pending') return res.status(403).json({ error: 'Nur ausstehende Anträge können bearbeitet werden. Bitte Admin kontaktieren.' });
+  if (vacation.status === 'approved') return res.status(403).json({ error: 'Genehmigte Urlaube können nicht direkt bearbeitet werden.' });
   if (start_date > end_date) return res.status(400).json({ error: 'Startdatum muss vor dem Enddatum liegen.' });
 
-  db.prepare('UPDATE vacations SET start_date = ?, end_date = ?, note = ? WHERE id = ?').run(start_date, end_date, note || null, req.params.id);
+  // Rejected → reset to pending on re-submit
+  const newStatus = vacation.status === 'rejected' ? 'pending' : 'pending';
+  db.prepare("UPDATE vacations SET start_date = ?, end_date = ?, note = ?, status = 'pending' WHERE id = ?").run(start_date, end_date, note || null, req.params.id);
   const updated = db.prepare(`
     SELECT v.*, u.first_name, u.last_name FROM vacations v JOIN users u ON v.user_id = u.id WHERE v.id = ?
   `).get(req.params.id);
   res.json(updated);
 });
 
-// Delete own PENDING vacation only
+// Change request for an APPROVED vacation (creates new pending entry that replaces original when approved)
+router.post('/change-request/:id', authenticate, (req, res) => {
+  const { start_date, end_date, note } = req.body;
+  const original = db.prepare('SELECT * FROM vacations WHERE id = ?').get(req.params.id);
+  if (!original) return res.status(404).json({ error: 'Urlaub nicht gefunden.' });
+  if (original.user_id !== req.user.id) return res.status(403).json({ error: 'Keine Berechtigung.' });
+  if (original.status !== 'approved') return res.status(400).json({ error: 'Nur genehmigte Urlaube können so geändert werden.' });
+  if (start_date > end_date) return res.status(400).json({ error: 'Startdatum muss vor dem Enddatum liegen.' });
+
+  // Remove any existing pending change request for this vacation
+  db.prepare("DELETE FROM vacations WHERE replaces_id = ? AND status = 'pending'").run(original.id);
+
+  const result = db.prepare(
+    "INSERT INTO vacations (user_id, start_date, end_date, note, is_approved, status, replaces_id) VALUES (?, ?, ?, ?, 0, 'pending', ?)"
+  ).run(req.user.id, start_date, end_date, note || null, original.id);
+
+  const created = db.prepare(`
+    SELECT v.*, u.first_name, u.last_name FROM vacations v JOIN users u ON v.user_id = u.id WHERE v.id = ?
+  `).get(result.lastInsertRowid);
+  res.status(201).json(created);
+});
+
+// Delete own PENDING or REJECTED vacation
 router.delete('/:id', authenticate, (req, res) => {
   const vacation = db.prepare('SELECT * FROM vacations WHERE id = ?').get(req.params.id);
   if (!vacation) return res.status(404).json({ error: 'Urlaub nicht gefunden.' });
