@@ -18,21 +18,10 @@ router.post('/register', async (req, res) => {
 
   try {
     const hash = await bcrypt.hash(password, 10);
-    const stmt = db.prepare(
-      'INSERT INTO users (first_name, last_name, password_hash) VALUES (?, ?, ?)'
-    );
-    const result = stmt.run(first_name.trim(), last_name.trim(), hash);
+    db.prepare('INSERT INTO users (first_name, last_name, password_hash, is_approved) VALUES (?, ?, ?, 0)')
+      .run(first_name.trim(), last_name.trim(), hash);
 
-    const token = jwt.sign(
-      { id: result.lastInsertRowid, first_name: first_name.trim(), last_name: last_name.trim() },
-      JWT_SECRET,
-      { expiresIn: '7d' }
-    );
-
-    res.status(201).json({
-      token,
-      user: { id: result.lastInsertRowid, first_name: first_name.trim(), last_name: last_name.trim() },
-    });
+    res.status(201).json({ pending: true });
   } catch (err) {
     if (err.message.includes('UNIQUE constraint failed')) {
       return res.status(409).json({
@@ -55,13 +44,13 @@ router.post('/login', async (req, res) => {
     .prepare('SELECT * FROM users WHERE first_name = ? AND last_name = ?')
     .get(first_name.trim(), last_name.trim());
 
-  if (!user) {
-    return res.status(401).json({ error: 'Ungültige Anmeldedaten.' });
-  }
+  if (!user) return res.status(401).json({ error: 'Ungültige Anmeldedaten.' });
 
   const valid = await bcrypt.compare(password, user.password_hash);
-  if (!valid) {
-    return res.status(401).json({ error: 'Ungültige Anmeldedaten.' });
+  if (!valid) return res.status(401).json({ error: 'Ungültige Anmeldedaten.' });
+
+  if (!user.is_approved) {
+    return res.status(403).json({ error: 'Dein Konto wurde noch nicht freigegeben. Bitte wende dich an den Admin.' });
   }
 
   const token = jwt.sign(

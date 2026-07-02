@@ -38,9 +38,25 @@ router.post('/login', (req, res) => {
 
 router.get('/users', authenticateAdmin, (req, res) => {
   const users = db
-    .prepare('SELECT id, first_name, last_name, vacation_allowance, created_at FROM users ORDER BY last_name, first_name')
+    .prepare('SELECT id, first_name, last_name, vacation_allowance, vacation_carryover, is_approved, created_at FROM users ORDER BY is_approved ASC, last_name, first_name')
     .all();
   res.json(users);
+});
+
+router.put('/users/:id/approve', authenticateAdmin, (req, res) => {
+  const result = db.prepare('UPDATE users SET is_approved = 1 WHERE id = ?').run(req.params.id);
+  if (result.changes === 0) return res.status(404).json({ error: 'Benutzer nicht gefunden.' });
+  res.json({ message: 'Konto freigegeben.' });
+});
+
+router.put('/users/:id/carryover', authenticateAdmin, (req, res) => {
+  const carryover = parseInt(req.body.carryover);
+  if (isNaN(carryover) || carryover < 0 || carryover > 365) {
+    return res.status(400).json({ error: 'Ungültige Anzahl (0–365).' });
+  }
+  const result = db.prepare('UPDATE users SET vacation_carryover = ? WHERE id = ?').run(carryover, req.params.id);
+  if (result.changes === 0) return res.status(404).json({ error: 'Benutzer nicht gefunden.' });
+  res.json({ message: 'Resturlaub aktualisiert.' });
 });
 
 router.put('/users/:id/allowance', authenticateAdmin, (req, res) => {

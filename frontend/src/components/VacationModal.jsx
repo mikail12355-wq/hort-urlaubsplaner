@@ -45,6 +45,7 @@ export default function VacationModal({ modal, onClose, onSave, onDelete, stats 
     ? stats.remaining_days + currentEditDays - workingDays
     : null;
 
+
   const handleSubmit = async (e) => {
     e.preventDefault();
     setError('');

@@ -30,11 +30,8 @@ db.exec(`
   );
 `);
 
-// Migration: add vacation_allowance if not yet present
-try {
-  db.exec('ALTER TABLE users ADD COLUMN vacation_allowance INTEGER NOT NULL DEFAULT 30');
-} catch {
-  // Column already exists
-}
+try { db.exec('ALTER TABLE users ADD COLUMN vacation_allowance INTEGER NOT NULL DEFAULT 30'); } catch {}
+try { db.exec('ALTER TABLE users ADD COLUMN is_approved INTEGER NOT NULL DEFAULT 0'); } catch {}
+try { db.exec('ALTER TABLE users ADD COLUMN vacation_carryover INTEGER NOT NULL DEFAULT 0'); } catch {}
 
 export default db;

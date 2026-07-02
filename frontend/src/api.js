@@ -48,4 +48,6 @@ export const adminApi = {
   getVacations: () => adminReq('/vacations'),
   deleteVacation: (id) => adminReq(`/vacations/${id}`, { method: 'DELETE' }),
   updateAllowance: (id, allowance) => adminReq(`/users/${id}/allowance`, { method: 'PUT', body: JSON.stringify({ allowance }) }),
+  approveUser: (id) => adminReq(`/users/${id}/approve`, { method: 'PUT' }),
+  updateCarryover: (id, carryover) => adminReq(`/users/${id}/carryover`, { method: 'PUT', body: JSON.stringify({ carryover }) }),
 };

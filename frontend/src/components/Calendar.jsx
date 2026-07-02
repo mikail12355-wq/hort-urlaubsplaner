@@ -52,58 +52,58 @@ function StatsCard({ stats, year, onAllowanceChange }) {
     }
   };
 
-  const pct = stats.allowance > 0 ? Math.min(100, (stats.used_days / stats.allowance) * 100) : 0;
+  const total = stats.total_allowance ?? stats.allowance;
+  const pct = total > 0 ? Math.min(100, (stats.used_days / total) * 100) : 0;
   const barColor = stats.remaining_days < 0 ? 'bg-red-500' : stats.remaining_days <= 5 ? 'bg-amber-400' : 'bg-indigo-500';
-  const textColor = stats.remaining_days < 0 ? 'text-red-500' : stats.remaining_days <= 5 ? 'text-amber-500' : 'text-indigo-500';
+  const textColor = stats.remaining_days < 0 ? 'text-red-500' : stats.remaining_days <= 5 ? 'text-amber-600 font-semibold' : 'text-indigo-600 font-semibold';
 
   return (
     <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-5">
       <div className="flex items-center justify-between mb-3">
         <h3 className="font-semibold text-gray-700 text-sm">Meine Urlaubstage {year}</h3>
-        <span className="text-sm text-gray-500">
-          <span className="font-semibold text-gray-800">{stats.used_days}</span> von{' '}
-          {editing ? (
-            <span className="inline-flex items-center gap-1 ml-1">
-              <input
-                ref={inputRef}
-                type="number"
-                value={value}
-                min={0} max={365}
-                onChange={(e) => setValue(Number(e.target.value))}
-                onKeyDown={(e) => { if (e.key === 'Enter') save(); if (e.key === 'Escape') setEditing(false); }}
-                className="w-14 border border-indigo-300 rounded-lg px-2 py-0.5 text-sm text-center focus:outline-none focus:ring-2 focus:ring-indigo-300"
-              />
-              <button onClick={save} disabled={saving}
-                className="text-xs bg-indigo-600 text-white px-2 py-0.5 rounded-lg hover:bg-indigo-700 disabled:opacity-60">
-                ✓
-              </button>
-              <button onClick={() => setEditing(false)}
-                className="text-xs text-gray-400 hover:text-gray-600">
-                ✕
-              </button>
-            </span>
-          ) : (
-            <button
-              onClick={() => setEditing(true)}
-              className="font-medium text-gray-700 underline decoration-dotted hover:text-indigo-600 transition-colors ml-1"
-              title="Eigene Urlaubstage anpassen"
-            >
-              {stats.allowance} Tagen
-            </button>
-          )}
-        </span>
-      </div>
-      <div className="h-2.5 bg-gray-100 rounded-full overflow-hidden">
-        <div className={`h-full rounded-full transition-all duration-500 ${barColor}`} style={{ width: `${pct}%` }} />
-      </div>
-      <div className="flex justify-between mt-2">
-        <span className={`text-xs font-medium ${textColor}`}>
+        <span className={`text-sm font-bold ${textColor}`}>
           {stats.remaining_days < 0
             ? `${Math.abs(stats.remaining_days)} Tage überzogen`
             : `${stats.remaining_days} Tage übrig`}
         </span>
-        <span className="text-xs text-gray-400 italic">Klick auf Tageszahl zum Anpassen</span>
       </div>
+
+      <div className="h-2.5 bg-gray-100 rounded-full overflow-hidden mb-3">
+        <div className={`h-full rounded-full transition-all duration-500 ${barColor}`} style={{ width: `${pct}%` }} />
+      </div>
+
+      <div className="grid grid-cols-3 gap-2 text-center text-xs">
+        <div className="bg-gray-50 rounded-xl p-2">
+          <div className="text-gray-400 mb-0.5">Jahresurlaub</div>
+          <div className="flex items-center justify-center gap-1">
+            {editing ? (
+              <>
+                <input ref={inputRef} type="number" value={value} min={0} max={365}
+                  onChange={(e) => setValue(Number(e.target.value))}
+                  onKeyDown={(e) => { if (e.key === 'Enter') save(); if (e.key === 'Escape') setEditing(false); }}
+                  className="w-12 border border-indigo-300 rounded-lg px-1 py-0.5 text-sm text-center focus:outline-none focus:ring-1 focus:ring-indigo-300" />
+                <button onClick={save} disabled={saving} className="text-indigo-600 font-bold">✓</button>
+                <button onClick={() => setEditing(false)} className="text-gray-400">✕</button>
+              </>
+            ) : (
+              <button onClick={() => setEditing(true)}
+                className="font-bold text-gray-800 text-sm underline decoration-dotted hover:text-indigo-600"
+                title="Jahresurlaub anpassen">
+                {stats.allowance} Tage
+              </button>
+            )}
+          </div>
+        </div>
+        <div className="bg-emerald-50 rounded-xl p-2">
+          <div className="text-emerald-600 mb-0.5">Resturlaub Vorjahr</div>
+          <div className="font-bold text-emerald-700 text-sm">+{stats.carryover ?? 0} Tage</div>
+        </div>
+        <div className="bg-indigo-50 rounded-xl p-2">
+          <div className="text-indigo-500 mb-0.5">Genutzt</div>
+          <div className="font-bold text-indigo-700 text-sm">{stats.used_days} von {total}</div>
+        </div>
+      </div>
+      <p className="text-xs text-gray-400 text-right mt-2 italic">Klick auf Jahresurlaub zum Anpassen</p>
     </div>
   );
 }
