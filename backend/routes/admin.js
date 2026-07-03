@@ -123,10 +123,36 @@ router.get('/vacations', authenticateAdmin, (req, res) => {
   res.json(vacations);
 });
 
+router.put('/vacations/:id', authenticateAdmin, (req, res) => {
+  const { start_date, end_date, note } = req.body;
+  if (!start_date || !end_date) return res.status(400).json({ error: 'Start- und Enddatum erforderlich.' });
+  if (start_date > end_date) return res.status(400).json({ error: 'Startdatum muss vor Enddatum liegen.' });
+  const result = db.prepare(
+    'UPDATE vacations SET start_date = ?, end_date = ?, note = ? WHERE id = ?'
+  ).run(start_date, end_date, note || null, req.params.id);
+  if (result.changes === 0) return res.status(404).json({ error: 'Urlaub nicht gefunden.' });
+  const updated = db.prepare(`
+    SELECT v.*, u.first_name, u.last_name FROM vacations v JOIN users u ON v.user_id = u.id WHERE v.id = ?
+  `).get(req.params.id);
+  res.json(updated);
+});
+
 router.delete('/vacations/:id', authenticateAdmin, (req, res) => {
   const result = db.prepare('DELETE FROM vacations WHERE id = ?').run(req.params.id);
   if (result.changes === 0) return res.status(404).json({ error: 'Urlaub nicht gefunden.' });
   res.json({ message: 'Urlaub gelöscht.' });
+});
+
+router.get('/calendar/:year/:month', authenticateAdmin, (req, res) => {
+  const { year, month } = req.params;
+  const mm = month.padStart(2, '0');
+  const vacations = db.prepare(`
+    SELECT v.*, u.first_name, u.last_name
+    FROM vacations v JOIN users u ON v.user_id = u.id
+    WHERE v.start_date <= ? AND v.end_date >= ? AND v.status = 'approved'
+    ORDER BY v.start_date, u.last_name
+  `).all(`${year}-${mm}-31`, `${year}-${mm}-01`);
+  res.json(vacations);
 });
 
 // --- Approval endpoints ---

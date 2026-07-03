@@ -236,7 +236,7 @@ export default function AdminPanel({ onLogout }) {
           </button>
           <button onClick={() => setTab('users')}
             className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${tab === 'users' ? 'bg-indigo-600 text-white' : 'text-gray-400 hover:text-white'}`}>
-            Erzieher ({approved.length})
+            Erzieher ({users.length})
           </button>
           <button onClick={() => setTab('vacations')}
             className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${tab === 'vacations' ? 'bg-indigo-600 text-white' : 'text-gray-400 hover:text-white'}`}>
@@ -344,8 +344,8 @@ export default function AdminPanel({ onLogout }) {
           </div>
         ) : tab === 'users' ? (
           <div className="bg-gray-800 rounded-2xl overflow-hidden border border-gray-700">
-            {approved.length === 0 ? (
-              <p className="text-gray-500 text-center py-12">Noch keine freigegebenen Erzieher.</p>
+            {users.length === 0 ? (
+              <p className="text-gray-500 text-center py-12">Noch keine Erzieher registriert.</p>
             ) : (
               <table className="w-full text-sm">
                 <thead>
@@ -366,31 +366,50 @@ export default function AdminPanel({ onLogout }) {
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-gray-700/50">
-                  {approved.map((u) => (
-                    <tr key={u.id} className="hover:bg-gray-700/30 transition-colors">
-                      <td className="px-5 py-3.5 font-medium">{u.first_name} {u.last_name}</td>
-                      <td className="px-5 py-3.5 hidden sm:table-cell">
-                        <NumberEditor
-                          value={u.vacation_allowance ?? 30}
-                          label="🌴"
-                          color="indigo"
-                          onSave={async (v) => { await adminApi.updateAllowance(u.id, v); fetchUsers(); }}
-                        />
+                  {users.map((u) => (
+                    <tr key={u.id} className={`hover:bg-gray-700/30 transition-colors ${!u.is_approved ? 'opacity-75' : ''}`}>
+                      <td className="px-5 py-3.5 font-medium">
+                        <div className="flex items-center gap-2 flex-wrap">
+                          <span>{u.first_name} {u.last_name}</span>
+                          {!u.is_approved && (
+                            <span className="text-xs px-2 py-0.5 rounded-full bg-amber-500/20 text-amber-400 font-medium">Ausstehend</span>
+                          )}
+                        </div>
                       </td>
                       <td className="px-5 py-3.5 hidden sm:table-cell">
-                        <NumberEditor
-                          value={u[`carryover_${carryoverYear}`] ?? 0}
-                          label={`➕`}
-                          color="emerald"
-                          onSave={async (v) => { await adminApi.updateCarryover(u.id, v, carryoverYear); fetchUsers(); }}
-                        />
+                        {u.is_approved ? (
+                          <NumberEditor
+                            value={u.vacation_allowance ?? 30}
+                            label="🌴"
+                            color="indigo"
+                            onSave={async (v) => { await adminApi.updateAllowance(u.id, v); fetchUsers(); }}
+                          />
+                        ) : <span className="text-gray-600 text-xs">—</span>}
+                      </td>
+                      <td className="px-5 py-3.5 hidden sm:table-cell">
+                        {u.is_approved ? (
+                          <NumberEditor
+                            value={u[`carryover_${carryoverYear}`] ?? 0}
+                            label={`➕`}
+                            color="emerald"
+                            onSave={async (v) => { await adminApi.updateCarryover(u.id, v, carryoverYear); fetchUsers(); }}
+                          />
+                        ) : <span className="text-gray-600 text-xs">—</span>}
                       </td>
                       <td className="px-5 py-3.5">
                         <div className="flex gap-2 justify-end flex-wrap">
-                          <button onClick={() => setResetModal(u)}
-                            className="text-xs px-3 py-1.5 rounded-lg bg-indigo-600/20 text-indigo-400 hover:bg-indigo-600/40 transition-colors font-medium">
-                            Passwort
-                          </button>
+                          {!u.is_approved && (
+                            <button onClick={() => handleApprove(u.id)}
+                              className="text-xs px-3 py-1.5 rounded-lg bg-amber-500 hover:bg-amber-400 text-white font-medium transition-colors">
+                              ✓ Freigeben
+                            </button>
+                          )}
+                          {u.is_approved && (
+                            <button onClick={() => setResetModal(u)}
+                              className="text-xs px-3 py-1.5 rounded-lg bg-indigo-600/20 text-indigo-400 hover:bg-indigo-600/40 transition-colors font-medium">
+                              Passwort
+                            </button>
+                          )}
                           <button onClick={() => handleDeleteUser(u.id)}
                             className={`text-xs px-3 py-1.5 rounded-lg font-medium transition-colors ${
                               confirmDelete === u.id ? 'bg-red-600 text-white' : 'bg-red-900/20 text-red-400 hover:bg-red-900/40'
