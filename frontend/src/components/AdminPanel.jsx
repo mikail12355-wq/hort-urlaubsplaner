@@ -7,6 +7,47 @@ function formatDE(dateStr) {
   return `${d}.${m}.${y}`;
 }
 
+function countDays(startStr, endStr) {
+  const start = new Date(startStr + 'T00:00:00');
+  const end = new Date(endStr + 'T00:00:00');
+  return Math.round((end - start) / 86400000) + 1;
+}
+
+function getVacStats(v, users, vacations) {
+  const user = users.find(u => u.id === v.user_id);
+  if (!user) return null;
+
+  const requestYear = new Date(v.start_date + 'T00:00:00').getFullYear();
+  const allowance = user.vacation_allowance ?? 30;
+  const carryover = user[`carryover_${requestYear}`] ?? 0;
+  const total = allowance + carryover;
+
+  const usedDays = vacations
+    .filter(vac =>
+      vac.user_id === v.user_id &&
+      vac.status === 'approved' &&
+      new Date(vac.start_date + 'T00:00:00').getFullYear() === requestYear
+    )
+    .reduce((sum, vac) => sum + countDays(vac.start_date, vac.end_date), 0);
+
+  const remaining = total - usedDays;
+  const requestDays = countDays(v.start_date, v.end_date);
+  const isDeleteReq = v.delete_requested && v.status === 'approved';
+
+  let remainingAfter;
+  if (isDeleteReq) {
+    remainingAfter = remaining + requestDays;
+  } else if (v.replaces_id) {
+    const original = vacations.find(vac => vac.id === v.replaces_id);
+    const originalDays = original ? countDays(original.start_date, original.end_date) : 0;
+    remainingAfter = remaining + originalDays - requestDays;
+  } else {
+    remainingAfter = remaining - requestDays;
+  }
+
+  return { total, remaining, requestDays, remainingAfter, isDeleteReq };
+}
+
 function NumberEditor({ value: initial, onSave, label, color = 'indigo' }) {
   const [editing, setEditing] = useState(false);
   const [value, setValue] = useState(initial);
@@ -268,6 +309,7 @@ export default function AdminPanel({ onLogout }) {
                     <ul className="divide-y divide-gray-700/50">
                       {pending.vacations.map((v) => {
                         const isDeleteReq = v.status === 'approved' && v.delete_requested;
+                        const stats = getVacStats(v, users, vacations);
                         return (
                         <li key={v.id} className="px-5 py-3 flex items-center gap-3 flex-wrap">
                           <div className="flex-1 min-w-0">
@@ -276,11 +318,33 @@ export default function AdminPanel({ onLogout }) {
                               {formatDE(v.start_date)} – {formatDE(v.end_date)}
                               {v.note && <span className="italic ml-2 text-gray-500">„{v.note}"</span>}
                             </p>
-                            <p className="text-xs mt-0.5">
-                              {isDeleteReq && <span className="text-orange-400 font-medium">🗑️ Löschantrag</span>}
-                              {v.replaces_id && <span className="text-amber-400 font-medium">✏️ Änderungsantrag</span>}
-                              {!isDeleteReq && !v.replaces_id && <span className="text-emerald-400">Neuer Antrag</span>}
-                            </p>
+                            <div className="flex items-center gap-2 mt-1 flex-wrap">
+                              <span className="text-xs">
+                                {isDeleteReq && <span className="text-orange-400 font-medium">🗑️ Löschantrag</span>}
+                                {v.replaces_id && <span className="text-amber-400 font-medium">✏️ Änderungsantrag</span>}
+                                {!isDeleteReq && !v.replaces_id && <span className="text-emerald-400">Neuer Antrag</span>}
+                              </span>
+                              {stats && (
+                                <span className="flex items-center gap-1.5 text-[11px]">
+                                  <span className="text-gray-500">·</span>
+                                  <span className="text-gray-400">
+                                    {isDeleteReq
+                                      ? `${stats.requestDays} Tage werden freigegeben`
+                                      : `${stats.requestDays} Tage beantragt`}
+                                  </span>
+                                  <span className="text-gray-600">|</span>
+                                  <span className="text-gray-400">Verfügbar: <span className="text-white font-medium">{stats.remaining}</span></span>
+                                  {!isDeleteReq && (
+                                    <>
+                                      <span className="text-gray-600">→</span>
+                                      <span className={`font-semibold ${stats.remainingAfter < 0 ? 'text-red-400' : stats.remainingAfter <= 3 ? 'text-amber-400' : 'text-emerald-400'}`}>
+                                        {stats.remainingAfter < 0 ? `${stats.remainingAfter} ⚠️` : stats.remainingAfter} nach Genehmigung
+                                      </span>
+                                    </>
+                                  )}
+                                </span>
+                              )}
+                            </div>
                           </div>
                           <div className="flex gap-2">
                             {isDeleteReq ? (
