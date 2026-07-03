@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { adminApi } from '../api';
+import AdminCalendar from './AdminCalendar';
 
 function formatDE(dateStr) {
   const [y, m, d] = dateStr.split('-').map(Number);
@@ -238,6 +239,10 @@ export default function AdminPanel({ onLogout }) {
             className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${tab === 'users' ? 'bg-indigo-600 text-white' : 'text-gray-400 hover:text-white'}`}>
             Erzieher ({users.length})
           </button>
+          <button onClick={() => setTab('planning')}
+            className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${tab === 'planning' ? 'bg-indigo-600 text-white' : 'text-gray-400 hover:text-white'}`}>
+            Planung
+          </button>
           <button onClick={() => setTab('vacations')}
             className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${tab === 'vacations' ? 'bg-indigo-600 text-white' : 'text-gray-400 hover:text-white'}`}>
             Alle Urlaube ({vacations.filter(v => v.is_approved).length})
@@ -424,6 +429,8 @@ export default function AdminPanel({ onLogout }) {
               </table>
             )}
           </div>
+        ) : tab === 'planning' ? (
+          <AdminCalendar users={users} />
         ) : (
           <div className="bg-gray-800 rounded-2xl overflow-hidden border border-gray-700">
             {vacations.length === 0 ? (
