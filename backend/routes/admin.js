@@ -149,7 +149,7 @@ router.get('/calendar/:year/:month', authenticateAdmin, (req, res) => {
   const vacations = db.prepare(`
     SELECT v.*, u.first_name, u.last_name
     FROM vacations v JOIN users u ON v.user_id = u.id
-    WHERE v.start_date <= ? AND v.end_date >= ? AND v.status = 'approved'
+    WHERE v.start_date <= ? AND v.end_date >= ? AND v.status IN ('approved', 'pending')
     ORDER BY v.start_date, u.last_name
   `).all(`${year}-${mm}-31`, `${year}-${mm}-01`);
   res.json(vacations);

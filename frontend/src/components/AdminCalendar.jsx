@@ -110,10 +110,10 @@ export default function AdminCalendar({ users = [] }) {
     }
   });
 
-  // How many educators are absent per day
+  // How many educators are approved-absent per day (pending excluded from count)
   const overlapByDay = {};
   for (let day = 1; day <= totalDays; day++) {
-    overlapByDay[day] = approvedUsers.filter(u => dayVacOf[u.id]?.[day]).length;
+    overlapByDay[day] = approvedUsers.filter(u => dayVacOf[u.id]?.[day]?.status === 'approved').length;
   }
 
   const days = Array.from({ length: totalDays }, (_, i) => {
@@ -241,6 +241,7 @@ export default function AdminCalendar({ users = [] }) {
                       const v = dayVacOf[u.id]?.[day];
                       const start = v ? isVacStart(v, day) : false;
                       const end = v ? isVacEnd(v, day) : false;
+                      const isPending = v?.status === 'pending';
                       return (
                         <td key={day}
                           className={`p-0 relative
@@ -249,12 +250,18 @@ export default function AdminCalendar({ users = [] }) {
                           {v && (
                             <div
                               onClick={() => setEditModal(v)}
-                              title={`${v.first_name} ${v.last_name}: ${formatDE(v.start_date)} – ${formatDE(v.end_date)}${v.note ? ' · ' + v.note : ''}`}
-                              className={`absolute cursor-pointer top-2.5 bottom-2.5 opacity-85 hover:opacity-100 transition-opacity
-                                ${CELL_COLORS[idx % CELL_COLORS.length]}
+                              title={`${isPending ? '⏳ Antrag: ' : ''}${v.first_name} ${v.last_name}: ${formatDE(v.start_date)} – ${formatDE(v.end_date)}${v.note ? ' · ' + v.note : ''}`}
+                              className={`absolute cursor-pointer top-2.5 bottom-2.5 transition-opacity
+                                ${isPending
+                                  ? `${CELL_COLORS[idx % CELL_COLORS.length]} opacity-30 hover:opacity-50`
+                                  : `${CELL_COLORS[idx % CELL_COLORS.length]} opacity-85 hover:opacity-100`}
                                 ${start ? 'left-1.5 rounded-l-full' : 'left-0'}
                                 ${end ? 'right-1.5 rounded-r-full' : 'right-0'}`}
-                            />
+                            >
+                              {isPending && start && (
+                                <span className="absolute left-1.5 top-1/2 -translate-y-1/2 text-[8px] text-white font-bold leading-none select-none">⏳</span>
+                              )}
+                            </div>
                           )}
                         </td>
                       );
@@ -280,20 +287,30 @@ export default function AdminCalendar({ users = [] }) {
             })}
           </div>
 
-          {/* Overlap legend */}
-          {Object.values(overlapByDay).some(c => c >= 2) && (
-            <div className="px-4 py-2 border-t border-gray-700/30 flex items-center gap-4 text-[10px]">
-              <span className="text-gray-500">Legende:</span>
-              <span className="flex items-center gap-1.5">
-                <span className="w-3 h-3 rounded-sm bg-amber-900/60 border border-amber-700/50" />
-                <span className="text-amber-400">2 gleichzeitig</span>
-              </span>
-              <span className="flex items-center gap-1.5">
-                <span className="w-3 h-3 rounded-sm bg-red-900/60 border border-red-700/50" />
-                <span className="text-red-400">3+ gleichzeitig</span>
-              </span>
-            </div>
-          )}
+          {/* Legend */}
+          <div className="px-4 py-2 border-t border-gray-700/30 flex items-center gap-4 text-[10px] flex-wrap">
+            <span className="text-gray-500">Legende:</span>
+            <span className="flex items-center gap-1.5">
+              <span className="w-3 h-3 rounded-sm bg-gray-500" />
+              <span className="text-gray-400">Genehmigt</span>
+            </span>
+            <span className="flex items-center gap-1.5">
+              <span className="w-3 h-3 rounded-sm bg-gray-500 opacity-30" />
+              <span className="text-gray-400">⏳ Antrag ausstehend</span>
+            </span>
+            {Object.values(overlapByDay).some(c => c >= 2) && (
+              <>
+                <span className="flex items-center gap-1.5">
+                  <span className="w-3 h-3 rounded-sm bg-amber-900/60 border border-amber-700/50" />
+                  <span className="text-amber-400">2 gleichzeitig genehmigt</span>
+                </span>
+                <span className="flex items-center gap-1.5">
+                  <span className="w-3 h-3 rounded-sm bg-red-900/60 border border-red-700/50" />
+                  <span className="text-red-400">3+ gleichzeitig genehmigt</span>
+                </span>
+              </>
+            )}
+          </div>
         </div>
       ) : (
         /* ── Classic Calendar Grid View ── */
